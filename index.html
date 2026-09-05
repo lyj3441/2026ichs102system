@@ -93,17 +93,17 @@
       sem2: {
         math: ['기하'],
         social: ['동아시아 역사 기행', '사회와 문화', '한국지리 탐구', '인문학과 윤리', '사회문제 탐구'],
-        science: ['역할과 에너지', '물질과 에너지', '세포와 물질대사', '지구시스템과학', '과학융합탐구']
+        science: ['역학과 에너지', '물질과 에너지', '세포와 물질대사', '지구시스템과학', '과학융합탐구']
       }
     };
 
-    // [수정사항 4] 학번과 이름 외 초기화된 학생 데이터
+    // 모든 학생 데이터 초기화 (학번, 이름만 유지)
     const INITIAL_STUDENT_DATA = MOCK_STUDENTS_LIST.reduce((acc, student) => {
       acc[student.id] = {
         id: student.id,
         name: student.name,
-        targetCareer: '',
-        targetMajor: '',
+        targetCareer: '미정',
+        targetMajor: '미정',
         subjects: {
           sem1: { social: [], science: [] },
           sem2: { math: [], social: [], science: [] }
@@ -124,68 +124,80 @@
       return acc;
     }, {});
 
-    // [수정사항 2] 경기진협 배치표 5등급제 -> 9등급제 환산 및 수시 추천 로직
-    const getSusiRecommendation = (sem1Grades) => {
-      const values = Object.values(sem1Grades).filter(v => v !== null && !isNaN(v) && v !== '');
-      if (values.length === 0) return { range: '미산출', univs: '1학기 내신 성적 입력이 필요합니다.', tip: '내신을 입력해 주세요.', convertedAvg: null };
-      
-      const avg5 = values.reduce((a, b) => a + Number(b), 0) / values.length;
-      // 경기진협 5등급제 -> 9등급제 환산 수식 (y = 1.8x - 0.8)
-      const converted9 = (1.8 * avg5 - 0.8).toFixed(2);
+    // --- AI Recommendations Helper (경기진협 5등급제 -> 9등급제 환산 기준) ---
+    const getSusiRecommendation = (internalGrades) => {
+      const allVals = [
+        ...Object.values(internalGrades.sem1 || {}),
+        ...Object.values(internalGrades.sem2 || {})
+      ].filter(v => v !== null && v !== '' && !isNaN(v));
 
-      if (converted9 <= 1.5) {
+      if (allVals.length === 0) {
         return { 
-          range: `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산: ${converted9}등급 / 최상위권)`, 
-          univs: '서울대, 연세대, 고려대, 카이스트, 포스텍, 의약학계열 주요 학과', 
-          tip: '학생부 종합전형 세특의 학업 역량 및 깊이 있는 탐구 보고서 완성이 핵심입니다.',
-          convertedAvg: converted9
-        };
-      } else if (converted9 <= 2.2) {
-        return { 
-          range: `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산: ${converted9}등급 / 상위권)`, 
-          univs: '성균관대, 서강대, 한양대, 이화여대, 중앙대, 시립대 인기학과', 
-          tip: '수능 최저학력기준 충족 유무가 합격의 주요 변수이므로 모의고사 성적 관리를 병행하세요.',
-          convertedAvg: converted9
-        };
-      } else if (converted9 <= 3.2) {
-        return { 
-          range: `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산: ${converted9}등급 / 중상위권)`, 
-          univs: '경희대, 건국대, 동국대, 홍익대, 숙명여대, 인하대, 아주대', 
-          tip: '희망 전공과 연계된 2학년 고교학점제 선택과목의 계열적합성을 집중 보완하세요.',
-          convertedAvg: converted9
-        };
-      } else if (converted9 <= 4.5) {
-        return { 
-          range: `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산: ${converted9}등급 / 중위권)`, 
-          univs: '국민대, 숭실대, 세종대, 단국대, 인천대, 경기대, 가천대', 
-          tip: '교과전형 최저 맞춤 지원과 탐구 세특의 진로 진정성을 어필하는 종합전형 병행을 추천합니다.',
-          convertedAvg: converted9
-        };
-      } else {
-        return { 
-          range: `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산: ${converted9}등급 / 수도권 및 지방거점)`, 
-          univs: '수도권 주요 대학 및 지방 거점 국립대, 약술형 논술전형 고려', 
-          tip: '취약 과목 성적 반등과 함께 약술형 논술 또는 수능 최저를 노린 교과 전형 전략을 다각화하세요.',
-          convertedAvg: converted9
+          avg5: '미입력', 
+          converted9: '미산출', 
+          range: '성적 입력 필요', 
+          univs: '내신 성적을 입력해 주세요.', 
+          tip: '1, 2학기 내신 성적을 입력하면 경기진협 환산배치표 기준 적정 대학을 추천해 드립니다.' 
         };
       }
+
+      const avg5 = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
+      // 경기진협 기준 5등급제 -> 9등급제 환산 수식
+      const converted9 = (avg5 - 1) * 2 + 1;
+
+      let range = '';
+      let univs = '';
+      let tip = '';
+
+      if (converted9 <= 1.5) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 최상위권)`;
+        univs = '서울대, 연세대, 고려대, 카이스트, 포스텍, 의치한약수 주요학과';
+        tip = '학생부 종합전형 세특의 학업 역량 및 깊이 있는 탐구 활동 증명이 핵심입니다.';
+      } else if (converted9 <= 2.3) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 상위권)`;
+        univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 시립대 상위권 학과';
+        tip = '수능 최저학력기준 충족 여부 점검과 전공 관련 과목 선택의 개연성을 확보하세요.';
+      } else if (converted9 <= 3.5) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 중상위권)`;
+        univs = '건국대, 동국대, 홍익대, 국민대, 숭실대, 세종대, 인하대, 아주대';
+        tip = '주요 교과 내신 성적 유지 및 학종 세특 내 진로 연계활동의 구체성이 중요합니다.';
+      } else if (converted9 <= 5.0) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 중위권)`;
+        univs = '단국대, 광운대, 명지대, 상명대, 가천대, 인천대, 경기대, 가톨릭대';
+        tip = '교과 전형 수능 최저 준비와 함께 교과 세특 내 성실성을 적극 어필하세요.';
+      } else {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 일반권)`;
+        univs = '수도권 주요 대학 및 지방 거점 국립대, 면접/약술형 논술 전형 병행 고려';
+        tip = '취약 과목 성적 보완과 함께 맞춤형 교과/면접 전형 입시 전략 수립이 요구됩니다.';
+      }
+
+      return { avg5: avg5.toFixed(2), converted9: converted9.toFixed(2), range, univs, tip };
     };
 
-    const getJeongsiRecommendation = (sepGrades) => {
-      const values = Object.values(sepGrades).filter(v => v !== null && !isNaN(v) && v !== '');
-      if (values.length === 0) return { range: '미산출', univs: '9월 학력평가 성적 입력이 필요합니다.', tip: '성적을 입력해 주세요.' };
-      const avg = values.reduce((a, b) => a + Number(b), 0) / values.length;
+    const getJeongsiRecommendation = (mockGrades) => {
+      const allVals = [
+        ...Object.values(mockGrades.mar || {}),
+        ...Object.values(mockGrades.jun || {}),
+        ...Object.values(mockGrades.sep || {}),
+        ...Object.values(mockGrades.oct || {})
+      ].filter(v => v !== null && v !== '' && !isNaN(v));
 
-      if (avg <= 1.3) {
-        return { range: '1.0 ~ 1.3 등급 (수능 최상위권)', univs: '서울대, 연세대, 고려대, 의치한약수 주요 학과 정시 라인', tip: '취약 문항 탐구 및 만점 목표 실전 모의고사 훈련 필요.' };
-      } else if (avg <= 1.8) {
-        return { range: '1.4 ~ 1.8 등급 (수능 상위권)', univs: '서강대, 성균관대, 한양대, 중앙대 주요 공학/인문 계열', tip: '수학/탐구 영역 표준점수 높은 과목 집중 전략 체계화.' };
+      if (allVals.length === 0) {
+        return { range: '미산출', univs: '전국연합학력평가 성적을 입력해 주세요.', tip: '성적 입력 시 수능 예측 라인이 계산됩니다.' };
+      }
+
+      const avg = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
+
+      if (avg <= 1.5) {
+        return { range: `평균 ${avg.toFixed(2)}등급 (수능 최상위권)`, univs: '서울대, 연세대, 고려대, 의치한약수 정시 지원권', tip: '고난도 3점 문항 극복 및 실전 모의고사 시간 배분 훈련 집중.' };
       } else if (avg <= 2.5) {
-        return { range: '1.9 ~ 2.5 등급 (수능 중상위권)', univs: '경희대, 건국대, 동국대, 홍익대, 인하대 정시 지원권', tip: '영역별 가중치(수학/탐구 비율) 분석을 통한 정시 타깃 대학 선정.' };
+        return { range: `평균 ${avg.toFixed(2)}등급 (수능 상위권)`, univs: '서강대, 성균관대, 한양대, 중앙대, 경희대 정시 지원권', tip: '수학 및 탐구 영역 표준점수 우수 과목 집중 반영 전략 수립.' };
       } else if (avg <= 3.5) {
-        return { range: '2.6 ~ 3.5 등급 (수능 중위권)', univs: '숭실대, 세종대, 단국대, 인천대, 가천대 정시 지원권', tip: '탐구 한 과목 몰입 및 취약 영역 기출 유형 반복 숙달.' };
+        return { range: `평균 ${avg.toFixed(2)}등급 (수능 중상위권)`, univs: '건국대, 동국대, 홍익대, 국민대, 숭실대, 세종대 정시 지원권', tip: '영역별 가중치 분석을 통한 타깃 대학 및 탐구 과목 완벽 정리.' };
+      } else if (avg <= 5.0) {
+        return { range: `평균 ${avg.toFixed(2)}등급 (수능 중위권)`, univs: '단국대, 가천대, 인천대, 경기대 정시 지원권', tip: '기출 유형 반복 연습 및 자주 틀리는 영역 유형화 정리.' };
       } else {
-        return { range: '3.6 등급 이하', univs: '수도권/지역 주요 대학 정시 안정 지원권', tip: '기본 개념 재정립과 영역별 핵심 배점 문항 취득 전략 수립.' };
+        return { range: `평균 ${avg.toFixed(2)}등급`, univs: '수도권 및 지역 거점 대학 정시 지원권', tip: '기본 개념 재확인 및 배점이 높은 핵심 문제 유형 중심 학습.' };
       }
     };
 
@@ -197,7 +209,7 @@
       let strengths = [];
       let improvements = [];
 
-      if (career && career.trim() !== '') {
+      if (career && career !== '미정' && career.trim() !== '') {
         strengths.push(`'${career}'라는 명확한 진로 목표가 설정되어 있음.`);
       } else {
         improvements.push('진로 목표가 아직 미정이므로 세부 관심 분야 탐색이 우선 필요함.');
@@ -244,9 +256,6 @@
       const [pwModalOpen, setPwModalOpen] = useState(false);
       const [changePwForm, setChangePwForm] = useState({ current: '', newPw: '', confirmPw: '' });
       const [pwChangeError, setPwChangeError] = useState('');
-
-      // [수정사항 1] 교사용 전체 상담 내역 확인 모달 상태
-      const [allAppointmentsModalOpen, setAllAppointmentsModalOpen] = useState(false);
 
       const [selectedStudentId, setSelectedStudentId] = useState(null);
       const [searchQuery, setSearchQuery] = useState('');
@@ -344,8 +353,8 @@
         const newStudent = {
           id: newStudentForm.id,
           name: newStudentForm.name,
-          targetCareer: '',
-          targetMajor: '',
+          targetCareer: '미정',
+          targetMajor: '미정',
           subjects: { sem1: { social: [], science: [] }, sem2: { math: [], social: [], science: [] } },
           roadmapDetails: {},
           internalGrades: {
@@ -370,8 +379,8 @@
       const filteredStudentsList = useMemo(() => {
         return Object.values(students).filter(s => {
           const matchesSearch = s.name.includes(searchQuery) || 
-                                (s.targetCareer && s.targetCareer.includes(searchQuery)) || 
-                                (s.targetMajor && s.targetMajor.includes(searchQuery));
+                                s.targetCareer.includes(searchQuery) || 
+                                s.targetMajor.includes(searchQuery);
           if (filterCategory === '전체') return matchesSearch;
           return matchesSearch && s.logs.some(log => log.category === filterCategory);
         });
@@ -493,26 +502,17 @@
                     <div className="text-lg font-extrabold text-[#4a5843]">인천고 1학년 2반</div>
                     <div className="text-xs font-bold text-[#688a4a] mt-1 bg-[#f0f5e8] px-2 py-0.5 rounded-full inline-block">재학생 {Object.keys(students).length}명</div>
                   </div>
-                  
-                  {/* [수정사항 1] 클릭 시 교사의 전체 예정된 상담 목록 확인 가능 */}
-                  <div 
-                    onClick={() => setAllAppointmentsModalOpen(true)}
-                    className="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm hover:border-[#7ba05b] transition cursor-pointer group"
-                  >
-                    <div className="text-[11px] font-extrabold text-[#8c9e83] mb-1 flex justify-between items-center">
-                      <span>예정된 상담 일정</span>
-                      <span className="text-[10px] text-[#7ba05b] group-hover:underline">전체보기 &rarr;</span>
-                    </div>
+                  <div className="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
+                    <div className="text-[11px] font-extrabold text-[#8c9e83] mb-1">예정된 상담 일정</div>
                     <div className="text-lg font-extrabold text-[#3a6351]">{appointments.filter(a => a.status === '승인').length}건</div>
                     <div className="text-xs font-bold text-[#4e826b] mt-1 bg-[#eaf4f0] px-2 py-0.5 rounded-full inline-block">승인 완료</div>
                   </div>
-
                   <div className="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
                     <div className="text-[11px] font-extrabold text-[#8c9e83] mb-1">누적 진로 상담</div>
                     <div className="text-lg font-extrabold text-[#486382]">
-                      {Object.values(students).reduce((acc, s) => acc + s.logs.filter(l => l.category.includes('진로')).length, 0)}건
+                      {Object.values(students).reduce((acc, s) => acc + s.logs.length, 0)}건
                     </div>
-                    <div className="text-xs font-bold text-[#57799e] mt-1 bg-[#ebf2f8] px-2 py-0.5 rounded-full inline-block">고교학점제 연계</div>
+                    <div className="text-xs font-bold text-[#57799e] mt-1 bg-[#ebf2f8] px-2 py-0.5 rounded-full inline-block">전체 상담기록</div>
                   </div>
                   <div className="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
                     <div className="text-[11px] font-extrabold text-[#8c9e83] mb-1">신규 신청 내역</div>
@@ -523,32 +523,66 @@
                   </div>
                 </div>
 
-                {/* Teacher Appointment Approval */}
-                {appointments.filter(a => a.status === '신청').length > 0 && (
-                  <div className="bg-[#fff8e7] border-2 border-[#ebd8ad] rounded-3xl p-4 shadow-sm">
-                    <h3 className="font-extrabold text-[#7a5b28] text-sm mb-2.5 flex items-center gap-1.5">
-                      <Icon name="bell" size={16} className="text-[#d99b26]" /> 대기 중인 상담 신청 ({appointments.filter(a => a.status === '신청').length}건)
-                    </h3>
+                {/* 1. 교사 예정된 상담 내역 및 승인 대기 한눈에 보기 */}
+                <div className="bg-[#fffdf7] border-2 border-[#e3eed4] rounded-3xl p-5 shadow-sm space-y-4">
+                  <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2 border-b pb-3 border-[#e8edd8]">
+                    <Icon name="calendar" size={18} className="text-[#7ba05b]" /> 예정된 상담 일정 및 대기 신청 내역
+                  </h3>
+
+                  {appointments.length === 0 ? (
+                    <p className="text-xs font-bold text-[#8c9e83] text-center py-4">신청되거나 예정된 상담 일정이 없습니다.</p>
+                  ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {appointments.filter(a => a.status === '신청').map(app => (
-                        <div key={app.id} className="bg-[#fffdf7] p-3.5 rounded-2xl border-2 border-[#f3e6c8] flex justify-between items-center">
-                          <div>
-                            <div className="font-extrabold text-sm text-[#4a5843]">{app.name} <span className="text-xs font-bold text-[#8a9e80]">({app.date})</span></div>
-                            <div className="text-xs font-bold text-[#99793d] mt-0.5">{app.category} - {app.reason}</div>
+                      {appointments.map(app => (
+                        <div key={app.id} className={`p-4 rounded-2xl border-2 flex flex-col justify-between space-y-2 ${
+                          app.status === '신청' ? 'bg-[#fff8e7] border-[#ebd8ad]' : 'bg-[#f8faf2] border-[#e3eed4]'
+                        }`}>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[11px] font-extrabold text-[#8c9e83]">{app.studentId}</span>
+                              <div className="font-extrabold text-sm text-[#4a5843]">
+                                {app.name} <span className="text-xs text-[#688a4a]">({app.date})</span>
+                              </div>
+                            </div>
+                            <span className={`text-[10px] px-2.5 py-1 rounded-full font-extrabold ${
+                              app.status === '승인' ? 'bg-[#eaf4f0] text-[#2a5241] border border-[#b8decb]' : 'bg-[#fff3d1] text-[#7a5b28] border border-[#f2d99d]'
+                            }`}>
+                              {app.status === '신청' ? '승인 대기' : '상담 예정'}
+                            </span>
                           </div>
-                          <button
-                            onClick={() => {
-                              setAppointments(prev => prev.map(a => a.id === app.id ? { ...a, status: '승인' } : a));
-                            }}
-                            className="px-3 py-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white text-xs font-extrabold rounded-xl transition shadow-sm"
-                          >
-                            승인하기
-                          </button>
+
+                          <div className="text-xs font-bold text-[#5c6d54] bg-[#fffdf7] p-2.5 rounded-xl border border-[#e8edd8]">
+                            <p className="text-[#7ba05b] font-extrabold text-[11px] mb-0.5">[{app.category}]</p>
+                            <p>{app.reason}</p>
+                          </div>
+
+                          <div className="flex gap-2 justify-end pt-1">
+                            {app.status === '신청' && (
+                              <button
+                                onClick={() => {
+                                  setAppointments(prev => prev.map(a => a.id === app.id ? { ...a, status: '승인' } : a));
+                                }}
+                                className="px-3 py-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white text-xs font-extrabold rounded-xl transition shadow-sm flex items-center gap-1"
+                              >
+                                <Icon name="check" size={14} /> 승인하기
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (confirm('상담 일정을 취소/삭제하시겠습니까?')) {
+                                  setAppointments(prev => prev.filter(a => a.id !== app.id));
+                                }
+                              }}
+                              className="px-2.5 py-1.5 bg-[#fcf0f0] hover:bg-[#f8dada] text-[#d96b63] text-xs font-extrabold rounded-xl border border-[#f0c8c8] transition"
+                            >
+                              삭제
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Filters */}
                 <div className="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
@@ -607,8 +641,8 @@
                             </span>
                           </div>
                           <div className="space-y-1 text-xs mb-3 font-bold">
-                            <p className="text-[#596951]"><span className="text-[#8c9e83]">진로:</span> {student.targetCareer || '미입력'}</p>
-                            <p className="text-[#596951]"><span className="text-[#8c9e83]">학과:</span> {student.targetMajor || '미입력'}</p>
+                            <p className="text-[#596951]"><span className="text-[#8c9e83]">진로:</span> {student.targetCareer}</p>
+                            <p className="text-[#596951]"><span className="text-[#8c9e83]">학과:</span> {student.targetMajor}</p>
                           </div>
                         </div>
                         <div className="pt-2.5 border-t-2 border-dashed border-[#eef3e5] flex justify-between items-center text-[11px] font-bold text-[#8c9e83] relative z-10">
@@ -631,57 +665,6 @@
               />
             )}
           </main>
-
-          {/* [수정사항 1] 교사용 예정된 상담 내역 모달 */}
-          {allAppointmentsModalOpen && (
-            <div className="fixed inset-0 z-50 bg-[#2d3827]/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-[#fffdf7] w-full max-w-2xl p-6 rounded-[2.5rem] shadow-2xl border-4 border-[#e3eed4] max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center border-b-2 border-[#e8edd8] pb-3 mb-4">
-                  <h3 className="text-base font-extrabold text-[#4a5843] flex items-center gap-2">
-                    <Icon name="calendar" size={20} className="text-[#7ba05b]" /> 전체 예정된 상담 일정 관리
-                  </h3>
-                  <button 
-                    onClick={() => setAllAppointmentsModalOpen(false)}
-                    className="p-1.5 text-[#8a9e80] hover:text-[#3b4737] rounded-full"
-                  >
-                    <Icon name="x" size={20} />
-                  </button>
-                </div>
-
-                <div className="overflow-y-auto space-y-3 flex-1 pr-1">
-                  {appointments.length === 0 ? (
-                    <p className="text-xs font-bold text-[#8c9e83] text-center py-8">등록된 상담 일정이 없습니다.</p>
-                  ) : (
-                    appointments.slice().sort((a,b) => a.date.localeCompare(b.date)).map(app => (
-                      <div key={app.id} className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] flex flex-col sm:flex-row justify-between sm:items-center gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm text-[#4a5843]">{app.name} <span className="text-xs font-bold text-[#7ba05b]">({app.studentId})</span></span>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${app.status === '승인' ? 'bg-[#eaf4f0] text-[#2a5241]' : 'bg-[#fff3d1] text-[#7a5b28]'}`}>
-                              {app.status}
-                            </span>
-                          </div>
-                          <div className="text-xs font-bold text-[#688a4a] mt-1">📅 {app.date} | 카테고리: {app.category}</div>
-                          <div className="text-xs font-bold text-[#596951] mt-0.5">사유: {app.reason}</div>
-                        </div>
-
-                        {app.status === '신청' && (
-                          <button
-                            onClick={() => {
-                              setAppointments(prev => prev.map(a => a.id === app.id ? { ...a, status: '승인' } : a));
-                            }}
-                            className="px-3 py-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white text-xs font-extrabold rounded-xl transition shadow-sm self-end sm:self-center"
-                          >
-                            승인하기
-                          </button>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Change Password Modal */}
           {pwModalOpen && (
@@ -870,8 +853,8 @@
       const [localActiveTab, setLocalActiveTab] = useState('career');
       const currentTab = isTeacher ? propActiveTab : localActiveTab;
 
-      const [careerForm, setCareerForm] = useState(student.targetCareer || '');
-      const [majorForm, setMajorForm] = useState(student.targetMajor || '');
+      const [careerForm, setCareerForm] = useState(student.targetCareer || '미정');
+      const [majorForm, setMajorForm] = useState(student.targetMajor || '미정');
       const [subjectsForm, setSubjectsForm] = useState(student.subjects || {
         sem1: { social: [], science: [] },
         sem2: { math: [], social: [], science: [] }
@@ -879,21 +862,30 @@
 
       const [roadmapDetailsForm, setRoadmapDetailsForm] = useState(student.roadmapDetails || {});
 
-      const [internalGradesForm, setInternalGradesForm] = useState(student.internalGrades);
-      const [mockGradesForm, setMockGradesForm] = useState(student.mockGrades);
+      const [internalGradesForm, setInternalGradesForm] = useState(student.internalGrades || {
+        sem1: { korean: null, math: null, english: null, history: null, social: null, science: null },
+        sem2: { korean: null, math: null, english: null, history: null, social: null, science: null }
+      });
+
+      const [mockGradesForm, setMockGradesForm] = useState(student.mockGrades || {
+        mar: { korean: null, math: null, english: null, history: null, social: null, science: null },
+        jun: { korean: null, math: null, english: null, history: null, social: null, science: null },
+        sep: { korean: null, math: null, english: null, history: null, social: null, science: null },
+        oct: { korean: null, math: null, english: null, history: null, social: null, science: null }
+      });
 
       const internalChartRef = useRef(null);
       const mockChartRef = useRef(null);
       const internalChartInstance = useRef(null);
       const mockChartInstance = useRef(null);
 
-      // [수정사항 3] 교사 전용 '선생님 메모' 필드가 추가된 새 로그 입력폼
+      // 3. 교사 전용 비공개 '선생님 메모' 상태 추가
       const [newLog, setNewLog] = useState({
         date: new Date().toISOString().split('T')[0],
         category: '성적 향상 및 학습 전략',
         content: '',
         plan: '',
-        teacherNote: '' // 학생 비공개 교사 전용 메모
+        privateNote: ''
       });
 
       const [bookingForm, setBookingForm] = useState({
@@ -903,42 +895,50 @@
       });
 
       useEffect(() => {
-        setCareerForm(student.targetCareer || '');
-        setMajorForm(student.targetMajor || '');
+        setCareerForm(student.targetCareer || '미정');
+        setMajorForm(student.targetMajor || '미정');
         setSubjectsForm(student.subjects || {
           sem1: { social: [], science: [] },
           sem2: { math: [], social: [], science: [] }
         });
         setRoadmapDetailsForm(student.roadmapDetails || {});
-        setInternalGradesForm(student.internalGrades);
-        setMockGradesForm(student.mockGrades);
+        setInternalGradesForm(student.internalGrades || {
+          sem1: { korean: null, math: null, english: null, history: null, social: null, science: null },
+          sem2: { korean: null, math: null, english: null, history: null, social: null, science: null }
+        });
+        setMockGradesForm(student.mockGrades || {
+          mar: { korean: null, math: null, english: null, history: null, social: null, science: null },
+          jun: { korean: null, math: null, english: null, history: null, social: null, science: null },
+          sep: { korean: null, math: null, english: null, history: null, social: null, science: null },
+          oct: { korean: null, math: null, english: null, history: null, social: null, science: null }
+        });
       }, [student]);
 
-      // AI Analysis Computations
-      const susiAiResult = useMemo(() => getSusiRecommendation(internalGradesForm.sem1), [internalGradesForm.sem1]);
-      const jeongsiAiResult = useMemo(() => getJeongsiRecommendation(mockGradesForm.sep), [mockGradesForm.sep]);
+      // 2. AI 분석 - 경기진협 환산배치표 기준 적용
+      const susiAiResult = useMemo(() => getSusiRecommendation(internalGradesForm), [internalGradesForm]);
+      const jeongsiAiResult = useMemo(() => getJeongsiRecommendation(mockGradesForm), [mockGradesForm]);
       const roadmapAiResult = useMemo(() => getRoadmapAnalysis(careerForm, majorForm, subjectsForm, roadmapDetailsForm), [careerForm, majorForm, subjectsForm, roadmapDetailsForm]);
 
       // --- Chart Rendering Effect ---
       useEffect(() => {
         if (currentTab === 'grades') {
-          // Render Internal Grades Chart (1~5 Scale)
+          // Render Internal Grades Chart (5등급제 전체 시각화)
           if (internalChartRef.current) {
             if (internalChartInstance.current) internalChartInstance.current.destroy();
             const ctx = internalChartRef.current.getContext('2d');
             
-            const sem1Vals = Object.values(internalGradesForm.sem1).filter(v => v !== null && !isNaN(v) && v !== '');
+            const sem1Vals = Object.values(internalGradesForm.sem1 || {}).filter(v => v !== null && v !== '' && !isNaN(v));
             const sem1Avg = sem1Vals.length > 0 ? (sem1Vals.reduce((a,b)=>a+Number(b),0)/sem1Vals.length).toFixed(2) : null;
             
-            const sem2Vals = Object.values(internalGradesForm.sem2).filter(v => v !== null && !isNaN(v) && v !== '');
+            const sem2Vals = Object.values(internalGradesForm.sem2 || {}).filter(v => v !== null && v !== '' && !isNaN(v));
             const sem2Avg = sem2Vals.length > 0 ? (sem2Vals.reduce((a,b)=>a+Number(b),0)/sem2Vals.length).toFixed(2) : null;
 
             internalChartInstance.current = new Chart(ctx, {
               type: 'line',
               data: {
-                labels: ['1학년 1학기 내신', '1학년 2학기 내신 (미산출)'],
+                labels: ['1학년 1학기 내신', '1학년 2학기 내신'],
                 datasets: [{
-                  label: '평균 등급 (1~5등급 기준, 낮을수록 우수)',
+                  label: '내신 평균 (5등급제, 낮을수록 우수)',
                   data: [sem1Avg, sem2Avg],
                   borderColor: '#7ba05b',
                   backgroundColor: 'rgba(123, 160, 91, 0.2)',
@@ -946,7 +946,7 @@
                   pointRadius: 6,
                   pointBackgroundColor: '#5c7a43',
                   tension: 0.1,
-                  spanGaps: false
+                  spanGaps: true
                 }]
               },
               options: {
@@ -965,13 +965,13 @@
             });
           }
 
-          // Render Mock Exam Grades Chart
+          // Render Mock Exam Grades Chart (3, 6, 9, 10월 전체)
           if (mockChartRef.current) {
             if (mockChartInstance.current) mockChartInstance.current.destroy();
             const ctx = mockChartRef.current.getContext('2d');
 
             const getAvg = (obj) => {
-              const vals = Object.values(obj).filter(v => v !== null && !isNaN(v) && v !== '');
+              const vals = Object.values(obj || {}).filter(v => v !== null && v !== '' && !isNaN(v));
               return vals.length > 0 ? (vals.reduce((a,b)=>a+Number(b),0)/vals.length).toFixed(2) : null;
             };
 
@@ -983,9 +983,9 @@
             mockChartInstance.current = new Chart(ctx, {
               type: 'line',
               data: {
-                labels: ['3월 학평', '6월 학평', '9월 학평', '10월 학평 (미산출)'],
+                labels: ['3월 학평', '6월 학평', '9월 학평', '10월 학평'],
                 datasets: [{
-                  label: '전국연합 학력평가 평균 등급',
+                  label: '학력평가 평균 등급',
                   data: [marAvg, junAvg, sepAvg, octAvg],
                   borderColor: '#3a6351',
                   backgroundColor: 'rgba(58, 99, 81, 0.2)',
@@ -993,7 +993,7 @@
                   pointRadius: 6,
                   pointBackgroundColor: '#234235',
                   tension: 0.1,
-                  spanGaps: false
+                  spanGaps: true
                 }]
               },
               options: {
@@ -1052,7 +1052,7 @@
             mockGrades: mockGradesForm
           }
         }));
-        alert('내신 및 학력평가 성적 기록이 저장되었습니다.');
+        alert('내신 및 학력평가 성적 기록이 성공적으로 저장되었습니다.');
       };
 
       const handleAddLog = (e) => {
@@ -1068,7 +1068,7 @@
           category: '성적 향상 및 학습 전략',
           content: '',
           plan: '',
-          teacherNote: ''
+          privateNote: ''
         });
       };
 
@@ -1173,7 +1173,6 @@
                     <input
                       type="text"
                       disabled={!isTeacher}
-                      placeholder="예: 인공지능 소프트웨어 개발자"
                       className="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
                       value={careerForm}
                       onChange={(e) => setCareerForm(e.target.value)}
@@ -1184,7 +1183,6 @@
                     <input
                       type="text"
                       disabled={!isTeacher}
-                      placeholder="예: 컴퓨터공학과 / 인공지능학과"
                       className="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
                       value={majorForm}
                       onChange={(e) => setMajorForm(e.target.value)}
@@ -1344,7 +1342,7 @@
                         <input
                           type="text"
                           disabled={!isTeacher}
-                          placeholder={`${item} 관련 세부활동 내용을 입력해 주세요.`}
+                          placeholder={`${item} 관련 간단한 세부활동 내용을 입력하세요...`}
                           className="w-full px-3 py-2 bg-[#fffdf7] border-2 border-[#dde5d0] rounded-xl text-xs font-bold text-[#3b4737] placeholder-[#a8b8a0] focus:outline-none focus:border-[#7ba05b]"
                           value={memo}
                           onChange={(e) => {
@@ -1358,7 +1356,7 @@
                 </div>
               </div>
 
-              {/* AI Analysis Panel */}
+              {/* AI Analysis Panel for Career & Roadmap */}
               <div className="bg-[#f0f7ea] p-5 rounded-3xl border-2 border-[#c2e0aa] space-y-3 shadow-sm">
                 <h3 className="font-extrabold text-[#3a5e23] text-sm flex items-center gap-2">
                   <Icon name="sparkles" size={18} className="text-[#5c8a38]" /> AI 진로 및 로드맵 진단 결과
@@ -1372,7 +1370,7 @@
                       {roadmapAiResult.strengths.length > 0 ? (
                         roadmapAiResult.strengths.map((str, idx) => <li key={idx}>{str}</li>)
                       ) : (
-                        <li>아직 기록된 강점이 부족합니다. 항목을 채워주세요.</li>
+                        <li>아직 기록된 강점이 부족합니다. 진로 및 선택과목 항목을 입력해 주세요.</li>
                       )}
                     </ul>
                   </div>
@@ -1385,7 +1383,7 @@
                       {roadmapAiResult.improvements.length > 0 ? (
                         roadmapAiResult.improvements.map((imp, idx) => <li key={idx}>{imp}</li>)
                       ) : (
-                        <li>매우 알찬 로드맵을 갖추고 있습니다. 현재 계획을 지속 유지하세요.</li>
+                        <li>충실한 로드맵을 갖추고 있습니다. 지속적으로 활동을 구체화하세요.</li>
                       )}
                     </ul>
                   </div>
@@ -1403,17 +1401,17 @@
             </div>
           )}
 
-          {/* TAB 2: GRADES WITH CHARTS & SUBJECT GRADE EDITING */}
+          {/* TAB 2: GRADES WITH CHARTS (5등급제 환산 및 전 성적 입력 가능) */}
           {currentTab === 'grades' && (
             <div className="space-y-6">
-              {/* Internal School Grades Section (1~5 등급) */}
+              {/* 5. 내신 성적 관리 - 1,2학기 전 항목 입력 가능 */}
               <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                     <Icon name="file-text" size={16} className="text-[#7ba05b]" /> 내신 성적 관리 (5등급제 기준)
                   </h3>
                   <span className="text-[11px] font-extrabold text-[#7ba05b] bg-[#f0f5e8] px-2.5 py-1 rounded-full">
-                    2학기: 미산출
+                    모든 학기 성적 입력 가능
                   </span>
                 </div>
 
@@ -1422,6 +1420,7 @@
                     const keys = ['korean', 'math', 'english', 'history', 'social', 'science'];
                     const key = keys[idx];
                     const g1 = internalGradesForm.sem1[key];
+                    const g2 = internalGradesForm.sem2[key];
                     return (
                       <div key={subj} className="bg-[#f8faf2] p-3 rounded-2xl border-2 border-[#e3eed4]">
                         <div className="font-extrabold text-[#4a5843] mb-2">{subj}</div>
@@ -1431,18 +1430,30 @@
                             {isTeacher ? (
                               <input
                                 type="number" min="1" max="5"
-                                className="w-9 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
-                                value={g1 || ''}
+                                placeholder="등급"
+                                className="w-10 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
+                                value={g1 !== null && g1 !== undefined ? g1 : ''}
                                 onChange={(e) => setInternalGradesForm({
                                   ...internalGradesForm,
-                                  sem1: { ...internalGradesForm.sem1, [key]: e.target.value ? Number(e.target.value) : null }
+                                  sem1: { ...internalGradesForm.sem1, [key]: e.target.value !== '' ? Number(e.target.value) : null }
                                 })}
                               />
                             ) : <span className="font-extrabold text-[#5c7a43]">{g1 ? `${g1}등급` : '-'}</span>}
                           </div>
-                          <div className="flex justify-between items-center bg-[#f0f3eb] p-1.5 rounded-xl border border-[#e3eed4]">
-                            <span className="text-[10px] font-bold text-[#a0b098]">2학기</span>
-                            <span className="font-extrabold text-[#8a9a84] text-[10px]">미산출</span>
+                          <div className="flex justify-between items-center bg-[#fffdf7] p-1.5 rounded-xl border border-[#e3eed4]">
+                            <span className="text-[10px] font-bold text-[#8c9e83]">2학기</span>
+                            {isTeacher ? (
+                              <input
+                                type="number" min="1" max="5"
+                                placeholder="등급"
+                                className="w-10 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
+                                value={g2 !== null && g2 !== undefined ? g2 : ''}
+                                onChange={(e) => setInternalGradesForm({
+                                  ...internalGradesForm,
+                                  sem2: { ...internalGradesForm.sem2, [key]: e.target.value !== '' ? Number(e.target.value) : null }
+                                })}
+                              />
+                            ) : <span className="font-extrabold text-[#5c7a43]">{g2 ? `${g2}등급` : '-'}</span>}
                           </div>
                         </div>
                       </div>
@@ -1450,22 +1461,24 @@
                   })}
                 </div>
 
-                {/* [수정사항 2] 경기진협 배치표 9등급 환산 AI 추천 결과 표시 */}
+                {/* 2. AI 수시전형 경기진협 5등급제 환산 기준 대학 추천 결과 */}
                 <div className="bg-[#f2f7ec] p-4 rounded-2xl border-2 border-[#d0e3be] space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
                     <h4 className="text-xs font-extrabold text-[#436e29] flex items-center gap-1.5">
-                      <Icon name="award" size={16} className="text-[#5b8c3b]" /> 경기진협 배치표(9등급 환산) 기준 수시 AI 대학 추천
+                      <Icon name="award" size={16} className="text-[#5b8c3b]" /> 경기진협 5등급제 환산 기준 AI 수시전형 적정 대학 추천
                     </h4>
-                    <span className="text-[11px] font-bold text-[#55783d] bg-[#e4f0d8] px-2 py-0.5 rounded-md">{susiAiResult.range}</span>
+                    <span className="text-[11px] font-extrabold text-[#3a5e23] bg-[#e1ebd2] px-2 py-0.5 rounded-full">
+                      {susiAiResult.range}
+                    </span>
                   </div>
-                  <p className="text-xs font-extrabold text-[#314a20]">🎯 수시 적정 지원 대학 및 계열: <span className="text-[#517a35]">{susiAiResult.univs}</span></p>
-                  <p className="text-[11px] font-bold text-[#627a51]">💡 진학 및 학종 가이드: {susiAiResult.tip}</p>
+                  <p className="text-xs font-extrabold text-[#314a20]">🎯 추천 적정 대학 및 학과: <span className="text-[#517a35]">{susiAiResult.univs}</span></p>
+                  <p className="text-[11px] font-bold text-[#627a51]">💡 경기진협 입시 가이드: {susiAiResult.tip}</p>
                 </div>
 
                 {/* Internal Grades Chart */}
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] h-64 relative">
                   <h4 className="text-xs font-extrabold text-[#5c7a43] mb-2 flex items-center gap-1">
-                    📈 내신 등급 추이 그래프 (1~5등급)
+                    📈 내신 평균 등급 추이 그래프 (1~5등급)
                   </h4>
                   <div className="h-48 w-full">
                     <canvas ref={internalChartRef}></canvas>
@@ -1473,33 +1486,32 @@
                 </div>
               </div>
 
-              {/* Mock Exam Section */}
+              {/* 5. 학력평가 성적 관리 - 3, 6, 9, 10월 전 항목 입력 가능 */}
               <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                     <Icon name="trending-up" size={16} className="text-[#3a6351]" /> 전국연합 학력평가 성적 관리
                   </h3>
                   <span className="text-[11px] font-extrabold text-[#3a6351] bg-[#eaf4f0] px-2.5 py-1 rounded-full">
-                    모의고사 등급
+                    3월 · 6월 · 9월 · 10월 전체 입력 활성화
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                   {[
-                    { title: '3월 학력평가', key: 'mar', status: '입력가능' },
-                    { title: '6월 학력평가', key: 'jun', status: '입력가능' },
-                    { title: '9월 학력평가', key: 'sep', status: '최신' },
-                    { title: '10월 학력평가', key: 'oct', status: '미산출' }
+                    { title: '3월 학력평가', key: 'mar' },
+                    { title: '6월 학력평가', key: 'jun' },
+                    { title: '9월 학력평가', key: 'sep' },
+                    { title: '10월 학력평가', key: 'oct' }
                   ].map(m => (
-                    <div key={m.key} className={`p-3.5 rounded-2xl border-2 space-y-2 ${m.status === '미산출' ? 'bg-[#f5f7f2] border-[#e2e8da] opacity-75' : 'bg-[#f8faf2] border-[#e3eed4]'}`}>
-                      <div className="font-extrabold text-[#3a6351] text-center border-b pb-1 border-[#e3eed4] flex justify-between items-center px-1">
-                        <span>{m.title}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${m.status === '미산출' ? 'bg-[#e2e8da] text-[#788870]' : 'bg-[#e3edd8] text-[#426135]'}`}>{m.status}</span>
+                    <div key={m.key} className="p-3.5 rounded-2xl border-2 bg-[#f8faf2] border-[#e3eed4] space-y-2">
+                      <div className="font-extrabold text-[#3a6351] text-center border-b pb-1 border-[#e3eed4]">
+                        {m.title}
                       </div>
                       <div className="grid grid-cols-2 gap-1.5">
                         {[
                           { label: '국어', field: 'korean' },
-                          { label: '수학', field: 'math' },
+                          { label: '수학', field: 'field' ? 'math' : 'math' },
                           { label: '영어', field: 'english' },
                           { label: '한국사', field: 'history' },
                           { label: '사회', field: 'social' },
@@ -1509,14 +1521,15 @@
                           return (
                             <div key={s.field} className="flex justify-between items-center bg-[#fffdf7] px-2 py-1 rounded-lg border border-[#dde5d0]">
                               <span className="text-[10px] font-bold text-[#8c9e83]">{s.label}</span>
-                              {isTeacher && m.status !== '미산출' ? (
+                              {isTeacher ? (
                                 <input
                                   type="number" min="1" max="9"
-                                  className="w-8 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded font-bold"
-                                  value={val || ''}
+                                  placeholder="등급"
+                                  className="w-9 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded font-bold"
+                                  value={val !== null && val !== undefined ? val : ''}
                                   onChange={(e) => setMockGradesForm({
                                     ...mockGradesForm,
-                                    [m.key]: { ...mockGradesForm[m.key], [s.field]: e.target.value ? Number(e.target.value) : null }
+                                    [m.key]: { ...mockGradesForm[m.key], [s.field]: e.target.value !== '' ? Number(e.target.value) : null }
                                   })}
                                 />
                               ) : (
@@ -1532,14 +1545,14 @@
 
                 {/* AI 정시전형 대학 추천 결과 */}
                 <div className="bg-[#ebf4f5] p-4 rounded-2xl border-2 border-[#bcdbdf] space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-1">
                     <h4 className="text-xs font-extrabold text-[#2b5961] flex items-center gap-1.5">
-                      <Icon name="compass" size={16} className="text-[#3b7882]" /> 최신 9월 모의고사 기준 정시전형 적정 대학 AI 분석
+                      <Icon name="compass" size={16} className="text-[#3b7882]" /> 학력평가 성적 종합 정시전형 적정 대학 AI 분석
                     </h4>
                     <span className="text-[11px] font-bold text-[#356770]">{jeongsiAiResult.range}</span>
                   </div>
-                  <p className="text-xs font-extrabold text-[#1d4147]">🎯 정시 예측 라인: <span className="text-[#2c626b]">{jeongsiAiResult.univs}</span></p>
-                  <p className="text-[11px] font-bold text-[#457279]">💡 학습 로드맵: {jeongsiAiResult.tip}</p>
+                  <p className="text-xs font-extrabold text-[#1d4147]">🎯 정시 지원 타깃 라인: <span className="text-[#2c626b]">{jeongsiAiResult.univs}</span></p>
+                  <p className="text-[11px] font-bold text-[#457279]">💡 수능 대비 전략: {jeongsiAiResult.tip}</p>
                 </div>
 
                 {/* Mock Exam Grades Chart */}
@@ -1569,7 +1582,7 @@
             <div className="space-y-6">
               {isTeacher ? (
                 <div className="space-y-6">
-                  {/* [수정사항 3] 선생님 메모 입력란 추가 */}
+                  {/* 3. 교사 상담 등록 폼 - 선생님 메모(비공개) 포함 */}
                   <form onSubmit={handleAddLog} className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
                     <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                       <Icon name="edit-3" size={16} className="text-[#7ba05b]" /> 신규 상담 기록 작성
@@ -1601,7 +1614,7 @@
                       <label className="block text-xs font-bold text-[#8c9e83] mb-1">상담 내용 (공개)</label>
                       <textarea
                         rows="2"
-                        placeholder="학생과 공유할 상담 요약 내용을 입력하세요..."
+                        placeholder="상담 요약 및 관찰 내용..."
                         className="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] placeholder-[#a1b398] focus:outline-none focus:border-[#7ba05b]"
                         value={newLog.content}
                         onChange={(e) => setNewLog({ ...newLog, content: e.target.value })}
@@ -1611,27 +1624,25 @@
                       <label className="block text-xs font-bold text-[#8c9e83] mb-1">선생님 조언 (공개)</label>
                       <textarea
                         rows="2"
-                        placeholder="학생에게 전달할 따뜻한 조언 및 방향성..."
+                        placeholder="학생에게 전달할 선생님의 따뜻한 조언..."
                         className="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] placeholder-[#a1b398] focus:outline-none focus:border-[#7ba05b]"
                         value={newLog.plan}
                         onChange={(e) => setNewLog({ ...newLog, plan: e.target.value })}
                       ></textarea>
                     </div>
-
-                    {/* [수정사항 3] 학생 미열람 비공개 메모 */}
-                    <div className="bg-[#fff7f0] p-3 rounded-2xl border border-[#ffd8be]">
-                      <label className="block text-xs font-extrabold text-[#b85c1d] mb-1 flex items-center gap-1">
-                        <Icon name="lock" size={13} /> 🔒 선생님 전용 메모 (학생 비공개 / 교사만 열람 가능)
+                    {/* 3. 선생님 전용 메모 (비공개) */}
+                    <div className="bg-[#fff5f5] p-3 rounded-2xl border border-[#f0c8c8]">
+                      <label className="block text-xs font-extrabold text-[#c54b4b] mb-1 flex items-center gap-1">
+                        <Icon name="lock" size={13} /> 선생님 메모 (🔒 교사 전용 - 학생 열람 불가)
                       </label>
                       <textarea
                         rows="2"
-                        placeholder="학생에게 공개되지 않는 교사 전용 관찰 기록 및 학부모 상담 메모..."
-                        className="w-full p-2.5 bg-[#fffdf7] border border-[#fcc39b] rounded-xl text-xs font-bold text-[#3b4737] focus:outline-none focus:border-[#b85c1d]"
-                        value={newLog.teacherNote}
-                        onChange={(e) => setNewLog({ ...newLog, teacherNote: e.target.value })}
+                        placeholder="교사만 참고할 수 있는 비공개 메모 및 후속 지도사항..."
+                        className="w-full p-2.5 bg-[#fffdf7] border border-[#f0c8c8] rounded-xl text-xs font-bold text-[#3b4737] placeholder-[#d0a0a0] focus:outline-none focus:border-[#c54b4b]"
+                        value={newLog.privateNote}
+                        onChange={(e) => setNewLog({ ...newLog, privateNote: e.target.value })}
                       ></textarea>
                     </div>
-
                     <button
                       type="submit"
                       className="w-full py-3 bg-[#7ba05b] hover:bg-[#688a4a] text-white font-extrabold rounded-2xl text-xs transition shadow-sm"
@@ -1640,13 +1651,14 @@
                     </button>
                   </form>
 
+                  {/* Teacher's view of logs with Private Note */}
                   <div className="space-y-3">
                     <h3 className="font-extrabold text-[#4a5843] text-sm">상담 히스토리 ({student.logs.length}건)</h3>
                     <div className="relative pl-5 border-l-4 border-dashed border-[#c2d6b2] space-y-4">
                       {student.logs.slice().reverse().map(log => (
-                        <div key={log.id} className="relative bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
+                        <div key={log.id} className="relative bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm space-y-2">
                           <div className="absolute -left-[27px] top-4 w-4 h-4 bg-[#7ba05b] rounded-full border-2 border-white"></div>
-                          <div className="flex justify-between items-center mb-1">
+                          <div className="flex justify-between items-center">
                             <span className="text-xs font-extrabold text-[#5c7a43]">{log.category}</span>
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] font-bold text-[#8c9e83]">{log.date}</span>
@@ -1658,17 +1670,17 @@
                               </button>
                             </div>
                           </div>
-                          <p className="text-xs font-bold text-[#3b4737] mb-2">{log.content}</p>
+                          <p className="text-xs font-bold text-[#3b4737]">{log.content}</p>
                           {log.plan && (
-                            <div className="p-2.5 bg-[#f6f8f0] rounded-xl text-[11px] font-bold text-[#6a7a61] border border-[#e3eed4] mb-2">
+                            <div className="p-2.5 bg-[#f6f8f0] rounded-xl text-[11px] font-bold text-[#6a7a61] border border-[#e3eed4]">
                               <span className="font-extrabold text-[#4a5843]">💬 선생님 조언: </span>{log.plan}
                             </div>
                           )}
-
-                          {/* [수정사항 3] 교사 모드에서만 보이는 비공개 메모 */}
-                          {log.teacherNote && (
-                            <div className="p-2.5 bg-[#fff7f0] rounded-xl text-[11px] font-bold text-[#9e4e18] border border-[#ffd8be]">
-                              <span className="font-extrabold text-[#b85c1d]">🔒 선생님 전용 비공개 메모: </span>{log.teacherNote}
+                          {/* 교사 전용 비공개 메모 노출 */}
+                          {log.privateNote && (
+                            <div className="p-2.5 bg-[#fff0f0] rounded-xl text-[11px] font-bold text-[#a83b3b] border border-[#f5c6c6] flex items-start gap-1">
+                              <Icon name="lock" size={14} className="mt-0.5 shrink-0" />
+                              <div><span className="font-extrabold">선생님 메모(비공개): </span>{log.privateNote}</div>
                             </div>
                           )}
                         </div>
@@ -1677,7 +1689,7 @@
                   </div>
                 </div>
               ) : (
-                /* STUDENT BOOKING & LOGS VIEW (선생님 비공개 메모는 자동 제외) */
+                /* STUDENT VIEW (선생님 비공개 메모 미노출) */
                 <div className="space-y-6">
                   <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3 shadow-sm">
                     <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
@@ -1702,6 +1714,7 @@
                                 <div>{log.plan}</div>
                               </div>
                             )}
+                            {/* 비공개 메모는 학생 화면에 노출되지 않음 */}
                           </div>
                         ))}
                       </div>
