@@ -3,1520 +3,434 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2026 인천고 1학년 2반 진로진학시스템</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & React DOM CDN -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <!-- Babel Compiler CDN -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Lucide Icons CDN -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <title>고교 진학·진로 및 학업 관리 시스템</title>
   <style>
-    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/NanumSquareRound.woff');
-    
-    body {
-      font-family: 'NanumSquareRound', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #f6f8f0;
-      background-image: radial-gradient(#e2e9d2 1.5px, transparent 1.5px);
-      background-size: 24px 24px;
-      color: #3b4737;
+    :root {
+      --primary-color: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --bg-color: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-color: #1f2937;
+      --border-color: #e5e7eb;
     }
 
-    ::-webkit-scrollbar {
-      width: 10px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #eef2e3;
-      border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #acc49d;
-      border-radius: 10px;
-      border: 2px solid #eef2e3;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #8eab7d;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-color); padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+
+    /* Header & User Switcher */
+    header { display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .user-control { display: flex; align-items: center; gap: 10px; }
+    select, input, textarea, button { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 14px; }
+    button { background-color: var(--primary-color); color: white; border: none; cursor: pointer; transition: background 0.2s; }
+    button:hover { background-color: var(--primary-dark); }
+    .btn-danger { background-color: #ef4444; }
+    .btn-danger:hover { background-color: #dc2626; }
+    .btn-warning { background-color: #f59e0b; }
+    .btn-warning:hover { background-color: #d97706; }
+
+    /* Grid Layout */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card h2 { font-size: 18px; margin-bottom: 15px; color: #111827; border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; display: inline-block; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+    th, td { border: 1px solid var(--border-color); padding: 8px; text-align: center; }
+    th { background-color: #f9fafb; font-weight: 600; }
+    .status-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+    .status-pending { background: #fef3c7; color: #d97706; }
+    .status-completed { background: #d1fae5; color: #059669; }
+
+    /* AI Analysis Boxes */
+    .ai-box { background-color: #eff6ff; border-left: 4px solid var(--primary-color); padding: 12px; border-radius: 4px; margin-top: 10px; font-size: 14px; line-height: 1.5; }
+    .ai-box h4 { margin-bottom: 5px; color: var(--primary-dark); }
+    .pros { color: #059669; font-weight: bold; }
+    .cons { color: #dc2626; font-weight: bold; }
+
+    /* Forms */
+    .form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 13px; font-weight: bold; color: #4b5563; }
+
+    .notice-tag { font-size: 12px; color: #6b7280; margin-left: 5px; font-weight: normal; }
+    .unedited-tag { background-color: #f3f4f6; color: #9ca3af; }
   </style>
 </head>
-<body class="bg-[#f6f8f0] text-[#3b4737]">
-  <div id="root"></div>
+<body>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div>
+      <h1>학업·진로 및 입시 관리 시스템</h1>
+      <p style="font-size: 13px; color: #6b7280; margin-top: 4px;">현재 학기: 1학년 2학기 진행 중 (1학기 내신 / 9월 모의고사 반영 완료)</p>
+    </div>
+    <div class="user-control">
+      <label for="userRole"><strong>접속 권한:</strong></label>
+      <select id="userRole" onchange="switchRole()">
+        <option value="student">학생 (김진로)</option>
+        <option value="teacher">교사 (박지도 선생님)</option>
+      </select>
+    </div>
+  </header>
 
-    // --- Lucide Icon Helper ---
-    const Icon = ({ name, size = 18, className = "" }) => {
-      useEffect(() => {
-        if (window.lucide) {
-          window.lucide.createIcons();
-        }
-      }, [name]);
-      return <i data-lucide={name} style={{ fontSize: size, width: size, height: size }} class={`inline-block ${className}`}></i>;
-    };
-
-    // --- Data Constants ---
-    const MOCK_STUDENTS_LIST = [
-      { id: '10201', name: '강우석' }, { id: '10202', name: '김대규' }, { id: '10203', name: '김민성' },
-      { id: '10204', name: '김민수' }, { id: '10205', name: '김석현' }, { id: '10206', name: '김예준' },
-      { id: '10207', name: '김용하' }, { id: '10208', name: '김정윤' }, { id: '10209', name: '김태원' },
-      { id: '10210', name: '김하준' }, { id: '10211', name: '박민규' }, { id: '10212', name: '박선우' },
-      { id: '10213', name: '박세원' }, { id: '10214', name: '배윤찬' }, { id: '10215', name: '신우진' },
-      { id: '10216', name: '신희범' }, { id: '10217', name: '안단태' }, { id: '10218', name: '안우현' },
-      { id: '10219', name: '안현서' }, { id: '10220', name: '오주호' }, { id: '10221', name: '이현서' },
-      { id: '10222', name: '이현준' }, { id: '10223', name: '임서후' }, { id: '10224', name: '한예준' }
-    ];
-
-    // 초기 비밀번호 데이터 (교사 10200 + 학생 10201~10224 전부 '0000')
-    const INITIAL_PASSWORDS = {
-      '10200': '0000',
-      ...MOCK_STUDENTS_LIST.reduce((acc, student) => {
-        acc[student.id] = '0000';
-        return acc;
-      }, {})
-    };
-
-    const ROADMAP_ITEMS = [
-      '꿈두레 교육과정', '진로 연계 동아리 활동', '프로젝트 봉사활동', 
-      '수요칼리지', '글로벌 칼리지 심화 탐구', '학술제', '지역연계 꿈이음대학', '기타 자율진로활동'
-    ];
-
-    const SUBJECT_OPTIONS = {
-      sem1: {
-        social: ['세계시민과 지리', '세계사', '정치', '경제', '윤리와 사상'],
-        science: ['물리학', '화학', '생명과학', '지구과학']
-      },
-      sem2: {
-        math: ['기하'],
-        social: ['동아시아 역사 기행', '사회와 문화', '한국지리 탐구', '인문학과 윤리', '사회문제 탐구'],
-        science: ['역할과 에너지', '물질과 에너지', '세포와 물질대사', '지구시스템과학', '과학융합탐구']
-      }
-    };
-
-    const INITIAL_STUDENT_DATA = MOCK_STUDENTS_LIST.reduce((acc, student) => {
-      acc[student.id] = {
-        id: student.id,
-        name: student.name,
-        targetCareer: '인공지능 소프트웨어 개발자',
-        targetMajor: '컴퓨터공학과 / 인공지능학과',
-        subjects: {
-          sem1: { social: ['정치'], science: ['물리학', '화학'] },
-          sem2: { math: ['기하'], social: ['사회와 문화'], science: ['세포와 물질대사', '물질과 에너지'] }
-        },
-        roadmapDetails: {
-          '진로 연계 동아리 활동': '코딩 및 알고리즘 심화 탐구 동아리 부장 활동',
-          '수요칼리지': '파이썬 기반 머신러닝 데이터 분석 실습 이수',
-          '학술제': '인공지능 윤리 및 소셜 데이터 분석 발표 준비'
-        },
-        internalGrades: {
-          sem1: { korean: 2, math: 1, english: 2, history: 1, social: 2, science: 1 },
-          sem2: { korean: 1, math: 1, english: 2, history: 1, social: 1, science: 1 }
-        },
-        mockGrades: {
-          mar: { korean: 2, math: 1, english: 2, history: 1, social: 2, science: 1 },
-          jun: { korean: 1, math: 1, english: 1, history: 1, social: 1, science: 1 },
-          sep: { korean: 2, math: 1, english: 1, history: 1, social: 1, science: 1 },
-          oct: { korean: 1, math: 1, english: 1, history: 1, social: 1, science: 1 }
-        },
-        logs: [
-          { id: 1, date: '2026-03-15', category: '성적 향상 및 학습 전략', content: '수학 상위권 유지 전략 및 국어 비문학 독해법 상담 진행.', plan: '매일 국어 기출 2지문 풀이 후 오답노트 작성 지도.' },
-          { id: 2, date: '2026-04-10', category: '진로진학 및 고교학점제', content: '2학년 선택과목 관련 물리학, 기하 선택 타당성 검토.', plan: '공학 계열 진학을 위한 선택 과목 이수 로드맵 확정.' }
-        ]
-      };
-      return acc;
-    }, {});
-
-    // --- Main App Component ---
-    function App() {
-      const [students, setStudents] = useState(() => {
-        const saved = localStorage.getItem('school_students_data_v4');
-        return saved ? JSON.parse(saved) : INITIAL_STUDENT_DATA;
-      });
-
-      const [passwords, setPasswords] = useState(() => {
-        const saved = localStorage.getItem('school_passwords_v4');
-        return saved ? JSON.parse(saved) : INITIAL_PASSWORDS;
-      });
-
-      const [appointments, setAppointments] = useState(() => {
-        const saved = localStorage.getItem('school_appointments_v4');
-        return saved ? JSON.parse(saved) : [
-          { id: 1, studentId: '10201', name: '강우석', date: '2026-09-10', category: '진로진학 및 고교학점제', reason: '2학년 과목 선택 최종 점검 받고 싶습니다.', status: '승인' },
-          { id: 2, studentId: '10203', name: '김민성', date: '2026-09-10', category: '성적 향상 및 학습 전략', reason: '9월 모의고사 오답 분석 지도 요청합니다.', status: '승인' }
-        ];
-      });
-
-      const [currentUser, setCurrentUser] = useState(null);
+  <!-- Top Grid: Grades & AI Recommendation -->
+  <div class="grid">
+    <!-- 성적 관리 -->
+    <div class="card">
+      <h2>성적 현황</h2>
       
-      // Login Inputs
-      const [idInput, setIdInput] = useState('');
-      const [pwInput, setPwInput] = useState('');
-      const [loginError, setLoginError] = useState('');
+      <h3 style="font-size: 14px; margin-top: 10px;">1. 내신 성적 <span class="notice-tag">(1~5등급 체제)</span></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>학기</th>
+            <th>주요 과목 평균 등급</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1학년 1학기</td>
+            <td><strong>1.80 등급</strong></td>
+            <td><span class="status-badge status-completed">산출 완료</span></td>
+          </tr>
+          <tr class="unedited-tag">
+            <td>1학년 2학기</td>
+            <td>-</td>
+            <td><span class="status-badge status-pending">산출 전</span></td>
+          </tr>
+        </tbody>
+      </table>
 
-      // Password Change Modal
-      const [pwModalOpen, setPwModalOpen] = useState(false);
-      const [changePwForm, setChangePwForm] = useState({ current: '', newPw: '', confirmPw: '' });
-      const [pwChangeError, setPwChangeError] = useState('');
+      <h3 style="font-size: 14px; margin-top: 20px;">2. 전국연합학력평가 <span class="notice-tag">(1~9등급 체제)</span></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>월</th>
+            <th>국어</th>
+            <th>수학</th>
+            <th>영어</th>
+            <th>탐구Avg</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>3월</td>
+            <td>2</td>
+            <td>1</td>
+            <td>1</td>
+            <td>2.0</td>
+          </tr>
+          <tr>
+            <td>6월</td>
+            <td>1</td>
+            <td>2</td>
+            <td>1</td>
+            <td>1.5</td>
+          </tr>
+          <tr>
+            <td>9월</td>
+            <td>2</td>
+            <td>1</td>
+            <td>2</td>
+            <td>1.0</td>
+          </tr>
+          <tr class="unedited-tag">
+            <td>10월</td>
+            <td colspan="4">산출 전</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      const [selectedStudentId, setSelectedStudentId] = useState(null);
-      const [searchQuery, setSearchQuery] = useState('');
-      const [filterCategory, setFilterCategory] = useState('전체');
+    <!-- AI 입시 진단 분석 -->
+    <div class="card">
+      <h2>AI 진학·입시 분석 추천</h2>
+      
+      <div class="ai-box">
+        <h4>[수시 전형] 적정 대학 및 학과 추천</h4>
+        <p><strong>분석 데이터:</strong> 1학기 내신 평균 (1.80 등급 / 1~5등급 기준)</p>
+        <p style="margin-top: 5px;"><strong>추천 결과:</strong></p>
+        <ul style="padding-left: 20px; margin-top: 3px;">
+          <li>상향: 연세대 컴퓨터과학과 (학생부종합)</li>
+          <li>적정: 고려대 데이터과학과 / 성균관대 소프트웨어학</li>
+          <li>안정: 한양대 컴퓨터소프트웨어학부</li>
+        </ul>
+      </div>
 
-      const [activeTab, setActiveTab] = useState('career');
-      const [newStudentModal, setNewStudentModal] = useState(false);
-      const [newStudentForm, setNewStudentForm] = useState({ id: '', name: '' });
+      <div class="ai-box" style="margin-top: 15px; border-left-color: #10b981;">
+        <h4 style="color: #047857;">[정시 전형] 적정 대학 및 학과 추천</h4>
+        <p><strong>분석 데이터:</strong> 최신(9월) 전국연합학력평가 성적 (1~9등급 기준)</p>
+        <p style="margin-top: 5px;"><strong>추천 결과:</strong></p>
+        <ul style="padding-left: 20px; margin-top: 3px;">
+          <li>상향: 서울대 통계학과</li>
+          <li>적정: 연세대 인공지능학과 / 고려대 컴퓨터학과</li>
+          <li>안정: 서강대 컴퓨터공학과</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 
-      useEffect(() => {
-        localStorage.setItem('school_students_data_v4', JSON.stringify(students));
-      }, [students]);
+  <!-- Middle Grid: Curriculum & Roadmap AI Analysis -->
+  <div class="grid">
+    <div class="card" style="grid-column: span 2;">
+      <h2>희망 진로 기반 선택과목 및 로드맵 AI 분석</h2>
+      <p style="font-size: 14px; margin-bottom: 10px;"><strong>희망 진로/학과:</strong> AI 소프트웨어 개발자 / 컴퓨터공학과</p>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div>
+          <h3 style="font-size: 14px; margin-bottom: 5px;">고교학점제 2학년 권장 선택과목</h3>
+          <ul style="background: #f9fafb; padding: 10px 10px 10px 25px; border-radius: 6px; font-size: 13px;">
+            <li><strong>일반선택:</strong> 물리학Ⅰ, 미적분, 확률과 통계</li>
+            <li><strong>진로선택:</strong> 인공지능 수학, 프로그래밍</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="font-size: 14px; margin-bottom: 5px;">진로 준비 로드맵 체크리스트</h3>
+          <ul style="background: #f9fafb; padding: 10px 10px 10px 25px; border-radius: 6px; font-size: 13px;">
+            <li>[완료] 정보 교과 동아리 활동 참여</li>
+            <li>[완료] 수리·정보 탐구 보고서 작성</li>
+            <li>[진행중] 오픈소스 자율 프로젝트 참여</li>
+          </ul>
+        </div>
+      </div>
 
-      useEffect(() => {
-        localStorage.setItem('school_passwords_v4', JSON.stringify(passwords));
-      }, [passwords]);
+      <!-- AI 분석 (강점 및 보완점) -->
+      <div class="ai-box" style="margin-top: 15px; border-left-color: #8b5cf6;">
+        <h4 style="color: #6d28d9;">AI 종합 분석 결과 (강점 및 보완점)</h4>
+        <p><span class="pros">[강점]</span> 수학 및 탐구(수학/정보) 영역의 성적 향상세가 뚜렷하며, 선택 과목 세팅이 컴퓨터계열 요구 역량과 완벽히 부합함.</p>
+        <p style="margin-top: 5px;"><span class="cons">[보완점]</span> 2학기 내신 관리 유지와 함께, 선택과목 '프로그래밍' 실습 프로젝트에서의 독창적인 문제 해결 과정을 세부능력 및 특기사항에 심화 기록할 필요가 있음.</p>
+      </div>
+    </div>
+  </div>
 
-      useEffect(() => {
-        localStorage.setItem('school_appointments_v4', JSON.stringify(appointments));
-      }, [appointments]);
+  <!-- Bottom Grid: Counseling Management -->
+  <div class="grid">
+    <!-- 상담 신청/기록 작성 -->
+    <div class="card">
+      <h2 id="formTitle">상담 신청 (학생용)</h2>
+      <form id="counselForm" onsubmit="handleCounselSubmit(event)">
+        <div class="form-group">
+          <label for="counselDate">상담 희망일 / 일시</label>
+          <input type="date" id="counselDate" required>
+        </div>
+        <div class="form-group">
+          <label for="counselTopic">상담 주제</label>
+          <select id="counselTopic">
+            <option value="진학/입시">진학/입시</option>
+            <option value="선택과목">고교학점제 선택과목</option>
+            <option value="학업/성적">학업 및 성적 고민</option>
+            <option value="기타">기타 상담</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="counselContent">상담 신청 내용</label>
+          <textarea id="counselContent" rows="3" placeholder="상담받고 싶은 내용을 입력하세요." required></textarea>
+        </div>
 
-      const handleLogin = (e) => {
-        e.preventDefault();
-        const code = idInput.trim();
-        const inputPw = pwInput.trim();
+        <!-- 교사 전용 입력 필드 -->
+        <div class="form-group teacher-only" id="teacherAdviceGroup" style="display: none;">
+          <label for="teacherAdvice" style="color: #1d4ed8;">선생님 조언 (교사 작성)</label>
+          <textarea id="teacherAdvice" rows="3" placeholder="학생에게 전달할 조언 및 지도 방향을 작성하세요."></textarea>
+        </div>
 
-        if (!code || !inputPw) {
-          setLoginError('학번과 비밀번호를 모두 입력해 주세요.');
-          return;
-        }
+        <button type="submit" id="submitBtn">상담 신청하기</button>
+      </form>
+    </div>
 
-        const savedPw = passwords[code];
+    <!-- 상담 목록 및 내역 -->
+    <div class="card">
+      <h2>상담 기록 및 내역</h2>
+      <div id="counselList">
+        <!-- 동적 생성 테이블 -->
+      </div>
+    </div>
+  </div>
+</div>
 
-        if (!savedPw) {
-          setLoginError('존재하지 않는 학번(식별코드)입니다.');
-          return;
-        }
+<script>
+  // 초기 데이터 설정 (localStorage에 데이터가 없는 경우에만 등록)
+  const initialCounselData = [
+    {
+      id: 1,
+      date: '2026-08-20',
+      topic: '진학/입시',
+      content: '1학기 내신 1.80으로 수시 고려대 지원 가능 여부가 궁금합니다.',
+      advice: '수학, 과학 세특 작성을 보완하면 학종으로 충분히 경쟁력이 있습니다.',
+      status: '완료'
+    },
+    {
+      id: 2,
+      date: '2026-09-10',
+      topic: '선택과목',
+      content: '2학년 선택과목 중 물리학Ⅰ과 화학Ⅰ 중 무엇을 선택해야 할지 고민입니다.',
+      advice: '선생님 조언이 아직 입력되지 않았습니다.',
+      status: '신청중'
+    }
+  ];
 
-        if (savedPw !== inputPw) {
-          setLoginError('비밀번호가 일치하지 않습니다. (초기 비밀번호: 0000)');
-          return;
-        }
+  function getStoredData() {
+    const data = localStorage.getItem('counselingRecords');
+    if (!data) {
+      localStorage.setItem('counselingRecords', JSON.stringify(initialCounselData));
+      return initialCounselData;
+    }
+    return JSON.parse(data);
+  }
 
-        // 로그인 성공
-        if (code === '10200') {
-          setCurrentUser({ role: 'teacher', id: '10200' });
-        } else {
-          setCurrentUser({ role: 'student', id: code });
-          setSelectedStudentId(code);
-        }
-        setLoginError('');
+  function saveData(data) {
+    localStorage.setItem('counselingRecords', JSON.stringify(data));
+  }
+
+  // 사용자 권한 전환
+  function switchRole() {
+    const role = document.getElementById('userRole').value;
+    const formTitle = document.getElementById('formTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const teacherAdviceGroup = document.getElementById('teacherAdviceGroup');
+
+    if (role === 'teacher') {
+      formTitle.textContent = '상담 기록 및 선생님 조언 작성 (교사용)';
+      submitBtn.textContent = '상담 기록 및 선생님 조언 저장';
+      teacherAdviceGroup.style.display = 'flex';
+    } else {
+      formTitle.textContent = '상담 신청 (학생용)';
+      submitBtn.textContent = '상담 신청하기';
+      teacherAdviceGroup.style.display = 'none';
+    }
+    renderCounselList();
+  }
+
+  // 상담 작성/수정 폼 제출
+  function handleCounselSubmit(e) {
+    e.preventDefault();
+    const role = document.getElementById('userRole').value;
+    const records = getStoredData();
+
+    const date = document.getElementById('counselDate').value;
+    const topic = document.getElementById('counselTopic').value;
+    const content = document.getElementById('counselContent').value;
+    const advice = document.getElementById('teacherAdvice').value;
+
+    if (role === 'student') {
+      const newRecord = {
+        id: Date.now(),
+        date,
+        topic,
+        content,
+        advice: '선생님 조언이 아직 입력되지 않았습니다.',
+        status: '신청중'
       };
-
-      const handleLogout = () => {
-        setCurrentUser(null);
-        setIdInput('');
-        setPwInput('');
-        setSelectedStudentId(null);
-      };
-
-      // 비밀번호 변경 처리
-      const handleChangePassword = (e) => {
-        e.preventDefault();
-        setPwChangeError('');
-
-        const { current, newPw, confirmPw } = changePwForm;
-
-        if (passwords[currentUser.id] !== current) {
-          setPwChangeError('현재 비밀번호가 일치하지 않습니다.');
-          return;
-        }
-
-        if (!/^\d{4}$/.test(newPw)) {
-          setPwChangeError('새 비밀번호는 숫자 4자리여야 합니다.');
-          return;
-        }
-
-        if (newPw !== confirmPw) {
-          setPwChangeError('새 비밀번호와 비밀번호 확인이 일치하지 않습니다.');
-          return;
-        }
-
-        setPasswords(prev => ({ ...prev, [currentUser.id]: newPw }));
-        alert('비밀번호가 성공적으로 변경되었습니다!');
-        setPwModalOpen(false);
-        setChangePwForm({ current: '', newPw: '', confirmPw: '' });
-      };
-
-      const handleAddStudent = (e) => {
-        e.preventDefault();
-        if (!newStudentForm.id || !newStudentForm.name) return;
-        if (students[newStudentForm.id]) {
-          alert('이미 존재하는 학번입니다.');
-          return;
-        }
-
-        const newStudent = {
-          id: newStudentForm.id,
-          name: newStudentForm.name,
-          targetCareer: '미정',
-          targetMajor: '미정',
-          subjects: { sem1: { social: [], science: [] }, sem2: { math: [], social: [], science: [] } },
-          roadmapDetails: {},
-          internalGrades: {
-            sem1: { korean: 3, math: 3, english: 3, history: 3, social: 3, science: 3 },
-            sem2: { korean: 3, math: 3, english: 3, history: 3, social: 3, science: 3 }
-          },
-          mockGrades: {
-            mar: { korean: 3, math: 3, english: 3, history: 3, social: 3, science: 3 },
-            jun: { korean: 3, math: 3, english: 3, history: 3, social: 3, science: 3 },
-            sep: { korean: 3, math: 3, english: 3, history: 3, social: 3, science: 3 },
-            oct: { korean: 3, math: 3, english: 3, history: 3, social: 3, science: 3 }
-          },
-          logs: []
-        };
-
-        setStudents(prev => ({ ...prev, [newStudentForm.id]: newStudent }));
-        setPasswords(prev => ({ ...prev, [newStudentForm.id]: '0000' }));
-        setNewStudentForm({ id: '', name: '' });
-        setNewStudentModal(false);
-      };
-
-      const filteredStudentsList = useMemo(() => {
-        return Object.values(students).filter(s => {
-          const matchesSearch = s.name.includes(searchQuery) || 
-                                s.targetCareer.includes(searchQuery) || 
-                                s.targetMajor.includes(searchQuery);
-          if (filterCategory === '전체') return matchesSearch;
-          return matchesSearch && s.logs.some(log => log.category === filterCategory);
+      records.push(newRecord);
+    } else {
+      // 교사 권한으로 등록 시 최신 신청중 항목 처리 또는 새 기록 추가
+      const pendingRecord = records.find(r => r.status === '신청중');
+      if (pendingRecord) {
+        pendingRecord.date = date;
+        pendingRecord.topic = topic;
+        pendingRecord.content = content;
+        pendingRecord.advice = advice || pendingRecord.advice;
+        pendingRecord.status = '완료';
+      } else {
+        records.push({
+          id: Date.now(),
+          date,
+          topic,
+          content,
+          advice: advice || '선생님 조언이 등록되었습니다.',
+          status: '완료'
         });
-      }, [students, searchQuery, filterCategory]);
+      }
+    }
 
-      if (!currentUser) {
-        return (
-          <div class="min-h-screen flex items-center justify-center p-4">
-            <div class="bg-[#fffdf7] p-8 rounded-[2.5rem] shadow-lg w-full max-w-md border-4 border-[#e8edd8] relative overflow-hidden">
-              <div class="absolute -top-6 -right-6 w-20 h-20 bg-[#e3eed4] rounded-full opacity-60"></div>
-              <div class="absolute -bottom-6 -left-6 w-24 h-24 bg-[#fff3d1] rounded-full opacity-60"></div>
-              
-              <div class="text-center mb-6 relative z-10">
-                <div class="inline-flex p-4 rounded-3xl bg-[#7ba05b] text-white shadow-md mb-3 transform -rotate-3">
-                  <Icon name="trees" size={38} />
-                </div>
-                <h1 class="text-xl font-extrabold text-[#4a5843] tracking-tight">2026 인천고 1학년 2반<br/>진로진학시스템</h1>
-                <p class="text-[#72826a] text-xs font-bold mt-2 bg-[#f0f4e6] py-1 px-3 rounded-full inline-block">
-                  🌱 학번 & 비밀번호로 통합 로그인
-                </p>
-              </div>
+    saveData(records);
+    document.getElementById('counselForm').reset();
+    renderCounselList();
+    alert(role === 'student' ? '상담 신청이 완료되었습니다.' : '상담 기록 및 선생님 조언이 저장되었습니다.');
+  }
 
-              <form onSubmit={handleLogin} class="space-y-4 relative z-10">
-                <div>
-                  <label class="block text-xs font-extrabold text-[#5c6d54] mb-1.5 ml-1">학번 (식별 코드)</label>
-                  <input
-                    type="text"
-                    required
-                    class="w-full px-4 py-3 rounded-2xl bg-[#f7f9f1] border-2 border-[#dbe4cd] text-[#3b4737] font-bold placeholder-[#a3b39a] focus:outline-none focus:border-[#7ba05b] transition"
-                    placeholder="교사: 10200 / 학생: 10201~10224"
-                    value={idInput}
-                    onChange={(e) => setIdInput(e.target.value)}
-                  />
-                </div>
+  // 학생 기능: 상담 신청 취소
+  function cancelCounsel(id) {
+    if (confirm('이 상담 신청을 취소하시겠습니까?')) {
+      let records = getStoredData();
+      records = records.filter(r => r.id !== id);
+      saveData(records);
+      renderCounselList();
+    }
+  }
 
-                <div>
-                  <label class="block text-xs font-extrabold text-[#5c6d54] mb-1.5 ml-1">비밀번호 (초기: 0000)</label>
-                  <input
-                    type="password"
-                    required
-                    maxLength="4"
-                    class="w-full px-4 py-3 rounded-2xl bg-[#f7f9f1] border-2 border-[#dbe4cd] text-[#3b4737] font-bold placeholder-[#a3b39a] focus:outline-none focus:border-[#7ba05b] transition"
-                    placeholder="숫자 4자리 비밀번호"
-                    value={pwInput}
-                    onChange={(e) => setPwInput(e.target.value)}
-                  />
-                </div>
+  // 교사 기능: 기존 학생 상담 기록 삭제
+  function deleteCounsel(id) {
+    if (confirm('해당 상담 기록을 완전히 삭제하시겠습니까?')) {
+      let records = getStoredData();
+      records = records.filter(r => r.id !== id);
+      saveData(records);
+      renderCounselList();
+    }
+  }
 
-                {loginError && <p class="text-[#d96b63] text-xs text-center font-bold">{loginError}</p>}
+  // 상담 목록 화면 출력
+  function renderCounselList() {
+    const role = document.getElementById('userRole').value;
+    const records = getStoredData();
+    const container = document.getElementById('counselList');
 
-                <button
-                  type="submit"
-                  class="w-full py-3.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white font-extrabold text-base rounded-2xl transition shadow-md hover:shadow-lg transform active:scale-98 flex items-center justify-center gap-2"
-                >
-                  <Icon name="sparkles" size={18} />
-                  <span>시스템 로그인</span>
-                </button>
-              </form>
+    if (records.length === 0) {
+      container.innerHTML = '<p style="font-size: 13px; color: #6b7280; padding: 10px 0;">등록된 상담 내역이 없습니다.</p>';
+      return;
+    }
 
-              <div class="mt-6 pt-4 border-t-2 border-dashed border-[#e3eed4] text-center text-[11px] font-bold text-[#8c9e83] space-y-1">
-                <p>🍃 교사 학번: <span class="text-[#5c7a43]">10200</span> | 학생 학번: <span class="text-[#5c7a43]">10201~10224</span></p>
-                <p>🔑 초기 비밀번호: <span class="text-[#d96b63]">0000</span> (로그인 후 변경 가능)</p>
-              </div>
-            </div>
-          </div>
-        );
+    let html = `
+      <table>
+        <thead>
+          <tr>
+            <th>날짜</th>
+            <th>주제</th>
+            <th>신청 내용</th>
+            <th>선생님 조언</th>
+            <th>상태</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    records.forEach(r => {
+      const isPending = r.status === '신청중';
+      html += `
+        <tr>
+          <td>${r.date}</td>
+          <td>${r.topic}</td>
+          <td style="text-align: left;">${r.content}</td>
+          <td style="text-align: left; color: #1d4ed8;">${r.advice}</td>
+          <td><span class="status-badge ${isPending ? 'status-pending' : 'status-completed'}">${r.status}</span></td>
+          <td>
+      `;
+
+      if (role === 'student') {
+        if (isPending) {
+          html += `<button class="btn-warning" style="font-size: 11px; padding: 4px 8px;" onclick="cancelCounsel(${r.id})">신청 취소</button>`;
+        } else {
+          html += `<span style="font-size: 11px; color: #9ca3af;">-</span>`;
+        }
+      } else if (role === 'teacher') {
+        html += `<button class="btn-danger" style="font-size: 11px; padding: 4px 8px;" onclick="deleteCounsel(${r.id})">삭제</button>`;
       }
 
-      const selectedStudent = selectedStudentId ? students[selectedStudentId] : null;
+      html += `</td></tr>`;
+    });
 
-      return (
-        <div class="min-h-screen bg-[#f6f8f0]">
-          {/* Header */}
-          <header class="bg-[#fffdf7] border-b-4 border-[#e8edd8] sticky top-0 z-30 shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-              <div class="flex items-center gap-3">
-                <div class="p-2.5 bg-[#7ba05b] text-white rounded-2xl shadow-sm transform -rotate-2">
-                  <Icon name="trees" size={22} />
-                </div>
-                <div>
-                  <h1 class="font-extrabold text-[#4a5843] text-sm sm:text-base">2026 인천고 1학년 2반 진로진학시스템</h1>
-                  <p class="text-xs font-bold text-[#8a9e80] flex items-center gap-1">
-                    <span class="w-2 h-2 rounded-full bg-[#7ba05b]"></span>
-                    {currentUser.role === 'teacher' ? '교사 관리 모드 (10200)' : `학생 접속중 (${students[currentUser.id]?.name} / ${currentUser.id})`}
-                  </p>
-                </div>
-              </div>
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
 
-              <div class="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setPwChangeError('');
-                    setChangePwForm({ current: '', newPw: '', confirmPw: '' });
-                    setPwModalOpen(true);
-                  }}
-                  class="flex items-center gap-1.5 text-[#5c7a43] hover:text-[#3b4737] font-bold text-xs py-2 px-3 rounded-2xl bg-[#f0f5e8] hover:bg-[#e2ebd6] transition border border-[#d3e0c3]"
-                >
-                  <Icon name="key" size={15} />
-                  <span class="hidden sm:inline">비밀번호 변경</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  class="flex items-center gap-1.5 text-[#6c7d64] hover:text-[#3b4737] font-bold text-xs py-2 px-3 rounded-2xl bg-[#eef3e5] hover:bg-[#e2ebd6] transition border border-[#d3e0c3]"
-                >
-                  <Icon name="log-out" size={15} />
-                  <span>로그아웃</span>
-                </button>
-              </div>
-            </div>
-          </header>
+  // 초기화 및 실행
+  window.onload = function() {
+    getStoredData();
+    switchRole();
+  };
+</script>
 
-          <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {currentUser.role === 'teacher' ? (
-              /* TEACHER MODE */
-              <div class="space-y-6">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div class="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-                    <div class="text-[11px] font-extrabold text-[#8c9e83] mb-1">학급 기본 정보</div>
-                    <div class="text-lg font-extrabold text-[#4a5843]">인천고 1학년 2반</div>
-                    <div class="text-xs font-bold text-[#688a4a] mt-1 bg-[#f0f5e8] px-2 py-0.5 rounded-full inline-block">재학생 {Object.keys(students).length}명</div>
-                  </div>
-                  <div class="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-                    <div class="text-[11px] font-extrabold text-[#8c9e83] mb-1">예정된 상담 일정</div>
-                    <div class="text-lg font-extrabold text-[#3a6351]">{appointments.filter(a => a.status === '승인').length}건</div>
-                    <div class="text-xs font-bold text-[#4e826b] mt-1 bg-[#eaf4f0] px-2 py-0.5 rounded-full inline-block">승인 완료</div>
-                  </div>
-                  <div class="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-                    <div class="text-[11px] font-extrabold text-[#8c9e83] mb-1">누적 진로 상담</div>
-                    <div class="text-lg font-extrabold text-[#486382]">
-                      {Object.values(students).reduce((acc, s) => acc + s.logs.filter(l => l.category.includes('진로')).length, 0)}건
-                    </div>
-                    <div class="text-xs font-bold text-[#57799e] mt-1 bg-[#ebf2f8] px-2 py-0.5 rounded-full inline-block">고교학점제 연계</div>
-                  </div>
-                  <div class="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-                    <div class="text-[11px] font-extrabold text-[#8c9e83] mb-1">신규 신청 내역</div>
-                    <div class="text-lg font-extrabold text-[#875c74]">
-                      {appointments.filter(a => a.status === '신청').length}건
-                    </div>
-                    <div class="text-xs font-bold text-[#9e708b] mt-1 bg-[#f8ebf2] px-2 py-0.5 rounded-full inline-block">승인 대기중</div>
-                  </div>
-                </div>
-
-                {/* Teacher Appointment Approval */}
-                {appointments.filter(a => a.status === '신청').length > 0 && (
-                  <div class="bg-[#fff8e7] border-2 border-[#ebd8ad] rounded-3xl p-4 shadow-sm">
-                    <h3 class="font-extrabold text-[#7a5b28] text-sm mb-2.5 flex items-center gap-1.5">
-                      <Icon name="bell" size={16} className="text-[#d99b26]" /> 대기 중인 상담 신청 ({appointments.filter(a => a.status === '신청').length}건)
-                    </h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {appointments.filter(a => a.status === '신청').map(app => (
-                        <div key={app.id} class="bg-[#fffdf7] p-3.5 rounded-2xl border-2 border-[#f3e6c8] flex justify-between items-center">
-                          <div>
-                            <div class="font-extrabold text-sm text-[#4a5843]">{app.name} <span class="text-xs font-bold text-[#8a9e80]">({app.date})</span></div>
-                            <div class="text-xs font-bold text-[#99793d] mt-0.5">{app.category} - {app.reason}</div>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setAppointments(prev => prev.map(a => a.id === app.id ? { ...a, status: '승인' } : a));
-                            }}
-                            class="px-3 py-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white text-xs font-extrabold rounded-xl transition shadow-sm"
-                          >
-                            승인하기
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Filters */}
-                <div class="flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-                  <div class="flex flex-1 gap-2">
-                    <div class="relative flex-1">
-                      <Icon name="search" size={16} className="absolute left-3.5 top-3.5 text-[#a1b398]" />
-                      <input
-                        type="text"
-                        placeholder="학생 이름, 희망 진로, 학과 검색..."
-                        class="w-full pl-10 pr-4 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] placeholder-[#a1b398] focus:outline-none focus:border-[#7ba05b] transition"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                    </div>
-                    <select
-                      class="px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] focus:outline-none focus:border-[#7ba05b] transition"
-                      value={filterCategory}
-                      onChange={(e) => setFilterCategory(e.target.value)}
-                    >
-                      <option value="전체">전체 카테고리</option>
-                      <option value="성적 향상 및 학습 전략">성적 향상 및 학습 전략</option>
-                      <option value="진로진학 및 고교학점제">진로진학 및 고교학점제</option>
-                      <option value="기타 개인적인 고민">기타 개인적인 고민</option>
-                    </select>
-                  </div>
-
-                  <button
-                    onClick={() => setNewStudentModal(true)}
-                    class="flex items-center justify-center gap-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold transition shadow-sm"
-                  >
-                    <Icon name="plus" size={16} />
-                    <span>신규 학생 등록</span>
-                  </button>
-                </div>
-
-                {/* Cards Grid */}
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {filteredStudentsList.map(student => {
-                    return (
-                      <div
-                        key={student.id}
-                        onClick={() => {
-                          setSelectedStudentId(student.id);
-                          setActiveTab('career');
-                        }}
-                        class="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] hover:border-[#7ba05b] hover:shadow-md transition cursor-pointer flex flex-col justify-between group relative overflow-hidden"
-                      >
-                        <div class="relative z-10">
-                          <div class="flex justify-between items-start mb-2">
-                            <div>
-                              <span class="text-[11px] font-extrabold text-[#8c9e83]">{student.id}</span>
-                              <h3 class="text-base font-extrabold text-[#4a5843] group-hover:text-[#688a4a] transition">{student.name}</h3>
-                            </div>
-                            <span class="p-2 bg-[#eef4e6] text-[#688a4a] rounded-2xl">
-                              <Icon name="smile" size={18} />
-                            </span>
-                          </div>
-                          <div class="space-y-1 text-xs mb-3 font-bold">
-                            <p class="text-[#596951]"><span class="text-[#8c9e83]">진로:</span> {student.targetCareer}</p>
-                            <p class="text-[#596951]"><span class="text-[#8c9e83]">학과:</span> {student.targetMajor}</p>
-                          </div>
-                        </div>
-                        <div class="pt-2.5 border-t-2 border-dashed border-[#eef3e5] flex justify-between items-center text-[11px] font-bold text-[#8c9e83] relative z-10">
-                          <span>상담 기록 {student.logs.length}건</span>
-                          <span class="text-[#688a4a]">관리하기 &rarr;</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              /* STUDENT MODE */
-              <StudentDetailView
-                student={students[currentUser.id]}
-                isTeacher={false}
-                appointments={appointments}
-                setAppointments={setAppointments}
-                students={students}
-              />
-            )}
-          </main>
-
-          {/* Change Password Modal */}
-          {pwModalOpen && (
-            <div class="fixed inset-0 z-50 bg-[#2d3827]/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div class="bg-[#fffdf7] w-full max-w-sm p-6 rounded-[2rem] shadow-2xl border-4 border-[#e3eed4]">
-                <h3 class="text-lg font-extrabold text-[#4a5843] mb-4 flex items-center gap-2">
-                  <Icon name="key" size={18} className="text-[#7ba05b]" /> 비밀번호 변경
-                </h3>
-                <form onSubmit={handleChangePassword} class="space-y-3">
-                  <div>
-                    <label class="block text-xs font-extrabold text-[#6c7d64] mb-1">현재 비밀번호</label>
-                    <input
-                      type="password"
-                      required
-                      maxLength="4"
-                      class="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
-                      placeholder="현재 비밀번호 (초기: 0000)"
-                      value={changePwForm.current}
-                      onChange={(e) => setChangePwForm({ ...changePwForm, current: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-[#6c7d64] mb-1">새 비밀번호 (숫자 4자리)</label>
-                    <input
-                      type="password"
-                      required
-                      maxLength="4"
-                      class="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
-                      placeholder="숫자 4자리 입력"
-                      value={changePwForm.newPw}
-                      onChange={(e) => setChangePwForm({ ...changePwForm, newPw: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-[#6c7d64] mb-1">새 비밀번호 확인</label>
-                    <input
-                      type="password"
-                      required
-                      maxLength="4"
-                      class="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
-                      placeholder="새 비밀번호 재입력"
-                      value={changePwForm.confirmPw}
-                      onChange={(e) => setChangePwForm({ ...changePwForm, confirmPw: e.target.value })}
-                    />
-                  </div>
-
-                  {pwChangeError && <p class="text-[#d96b63] text-xs font-bold text-center">{pwChangeError}</p>}
-
-                  <div class="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setPwModalOpen(false)}
-                      class="flex-1 py-2.5 bg-[#eef3e5] text-[#596951] rounded-2xl font-extrabold text-xs hover:bg-[#e2ebd6]"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      class="flex-1 py-2.5 bg-[#7ba05b] text-white rounded-2xl font-extrabold text-xs hover:bg-[#688a4a] shadow-sm"
-                    >
-                      변경하기
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Teacher Detail Modal */}
-          {currentUser.role === 'teacher' && selectedStudent && (
-            <div class="fixed inset-0 z-50 bg-[#2d3827]/40 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-              <div class="bg-[#fffdf7] w-full max-w-4xl rounded-[2.5rem] shadow-2xl border-4 border-[#e3eed4] my-auto flex flex-col max-h-[90vh] overflow-hidden">
-                <div class="p-4 sm:p-6 border-b-2 border-[#e8edd8] flex justify-between items-center bg-[#f7faf0]">
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <h2 class="text-lg sm:text-xl font-extrabold text-[#4a5843]">{selectedStudent.name}</h2>
-                      <span class="px-3 py-1 bg-[#e4edd4] text-[#55733a] text-xs font-extrabold rounded-full">{selectedStudent.id}</span>
-                    </div>
-                    <p class="text-xs font-bold text-[#8a9e80] mt-1">2026 인천고 1-2 학생 진로 및 학업 통합 개별 카드</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedStudentId(null)}
-                    class="p-2 text-[#8a9e80] hover:text-[#3b4737] hover:bg-[#e8edd8] rounded-full transition"
-                  >
-                    <Icon name="x" size={22} />
-                  </button>
-                </div>
-
-                <div class="border-b-2 border-[#e8edd8] bg-[#fffdf7] px-4">
-                  <div class="grid grid-cols-3 gap-2 py-2">
-                    <button
-                      onClick={() => setActiveTab('career')}
-                      class={`py-2.5 px-3 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
-                        activeTab === 'career' ? 'bg-[#7ba05b] text-white shadow-sm' : 'text-[#6c7d64] hover:bg-[#f2f6eb]'
-                      }`}
-                    >
-                      <Icon name="compass" size={16} />
-                      <span>🎯 진로/선택과목</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('grades')}
-                      class={`py-2.5 px-3 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
-                        activeTab === 'grades' ? 'bg-[#7ba05b] text-white shadow-sm' : 'text-[#6c7d64] hover:bg-[#f2f6eb]'
-                      }`}
-                    >
-                      <Icon name="bar-chart-2" size={16} />
-                      <span>📊 성적 관리 & 그래프</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('counseling')}
-                      class={`py-2.5 px-3 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
-                        activeTab === 'counseling' ? 'bg-[#7ba05b] text-white shadow-sm' : 'text-[#6c7d64] hover:bg-[#f2f6eb]'
-                      }`}
-                    >
-                      <Icon name="message-square" size={16} />
-                      <span>💬 상담 기록</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#fbfcf7]">
-                  <StudentDetailView
-                    student={selectedStudent}
-                    isTeacher={true}
-                    activeTab={activeTab}
-                    setStudents={setStudents}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Add Student Modal */}
-          {newStudentModal && (
-            <div class="fixed inset-0 z-50 bg-[#2d3827]/40 backdrop-blur-xs flex items-center justify-center p-4">
-              <div class="bg-[#fffdf7] w-full max-w-sm p-6 rounded-[2rem] shadow-2xl border-4 border-[#e3eed4]">
-                <h3 class="text-lg font-extrabold text-[#4a5843] mb-4 flex items-center gap-2">
-                  <Icon name="user-plus" size={18} className="text-[#7ba05b]" /> 신규 학생 등록
-                </h3>
-                <form onSubmit={handleAddStudent} class="space-y-4">
-                  <div>
-                    <label class="block text-xs font-extrabold text-[#6c7d64] mb-1">학번 (예: 10225)</label>
-                    <input
-                      type="text"
-                      required
-                      class="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
-                      value={newStudentForm.id}
-                      onChange={(e) => setNewStudentForm({ ...newStudentForm, id: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-extrabold text-[#6c7d64] mb-1">이름</label>
-                    <input
-                      type="text"
-                      required
-                      class="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
-                      value={newStudentForm.name}
-                      onChange={(e) => setNewStudentForm({ ...newStudentForm, name: e.target.value })}
-                    />
-                  </div>
-                  <div class="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setNewStudentModal(false)}
-                      class="flex-1 py-2.5 bg-[#eef3e5] text-[#596951] rounded-2xl font-extrabold text-xs hover:bg-[#e2ebd6]"
-                    >
-                      취소
-                    </button>
-                    <button
-                      type="submit"
-                      class="flex-1 py-2.5 bg-[#7ba05b] text-white rounded-2xl font-extrabold text-xs hover:bg-[#688a4a] shadow-sm"
-                    >
-                      등록
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // --- Student Detail View Component ---
-    function StudentDetailView({ student, isTeacher, activeTab: propActiveTab, setStudents, appointments, setAppointments, students }) {
-      const [localActiveTab, setLocalActiveTab] = useState('career');
-      const currentTab = isTeacher ? propActiveTab : localActiveTab;
-
-      // State for Career & Subjects (Multi-select support)
-      const [careerForm, setCareerForm] = useState(student.targetCareer);
-      const [majorForm, setMajorForm] = useState(student.targetMajor);
-      const [subjectsForm, setSubjectsForm] = useState(student.subjects || {
-        sem1: { social: [], science: [] },
-        sem2: { math: [], social: [], science: [] }
-      });
-
-      // Roadmap detailed memo
-      const [roadmapDetailsForm, setRoadmapDetailsForm] = useState(student.roadmapDetails || {});
-
-      // Grades
-      const [internalGradesForm, setInternalGradesForm] = useState(student.internalGrades);
-      const [mockGradesForm, setMockGradesForm] = useState(student.mockGrades);
-
-      // Chart Refs
-      const internalChartRef = useRef(null);
-      const mockChartRef = useRef(null);
-      const internalChartInstance = useRef(null);
-      const mockChartInstance = useRef(null);
-
-      // Log Form
-      const [newLog, setNewLog] = useState({
-        date: new Date().toISOString().split('T')[0],
-        category: '성적 향상 및 학습 전략',
-        content: '',
-        plan: ''
-      });
-
-      // Booking Form
-      const [bookingForm, setBookingForm] = useState({
-        date: '',
-        category: '성적 향상 및 학습 전략',
-        reason: ''
-      });
-
-      useEffect(() => {
-        setCareerForm(student.targetCareer);
-        setMajorForm(student.targetMajor);
-        setSubjectsForm(student.subjects || {
-          sem1: { social: [], science: [] },
-          sem2: { math: [], social: [], science: [] }
-        });
-        setRoadmapDetailsForm(student.roadmapDetails || {});
-        setInternalGradesForm(student.internalGrades);
-        setMockGradesForm(student.mockGrades);
-      }, [student]);
-
-      // --- Chart Rendering Effect ---
-      useEffect(() => {
-        if (currentTab === 'grades') {
-          // Render Internal Grades Chart
-          if (internalChartRef.current) {
-            if (internalChartInstance.current) internalChartInstance.current.destroy();
-            const ctx = internalChartRef.current.getContext('2d');
-            
-            const sem1Avg = (Object.values(internalGradesForm.sem1).reduce((a,b)=>a+Number(b),0)/6).toFixed(2);
-            const sem2Avg = (Object.values(internalGradesForm.sem2).reduce((a,b)=>a+Number(b),0)/6).toFixed(2);
-
-            internalChartInstance.current = new Chart(ctx, {
-              type: 'line',
-              data: {
-                labels: ['1학년 1학기 내신', '1학년 2학기 내신'],
-                datasets: [{
-                  label: '평균 등급 (낮을수록 우수)',
-                  data: [sem1Avg, sem2Avg],
-                  borderColor: '#7ba05b',
-                  backgroundColor: 'rgba(123, 160, 91, 0.2)',
-                  borderWidth: 3,
-                  pointRadius: 6,
-                  pointBackgroundColor: '#5c7a43',
-                  tension: 0.1
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    reverse: true,
-                    min: 1,
-                    max: 9,
-                    title: { display: true, text: '등급 (1~9)' }
-                  }
-                }
-              }
-            });
-          }
-
-          // Render Mock Exam Grades Chart
-          if (mockChartRef.current) {
-            if (mockChartInstance.current) mockChartInstance.current.destroy();
-            const ctx = mockChartRef.current.getContext('2d');
-
-            const marAvg = (Object.values(mockGradesForm.mar).reduce((a,b)=>a+Number(b),0)/6).toFixed(2);
-            const junAvg = (Object.values(mockGradesForm.jun).reduce((a,b)=>a+Number(b),0)/6).toFixed(2);
-            const sepAvg = (Object.values(mockGradesForm.sep).reduce((a,b)=>a+Number(b),0)/6).toFixed(2);
-            const octAvg = (Object.values(mockGradesForm.oct).reduce((a,b)=>a+Number(b),0)/6).toFixed(2);
-
-            mockChartInstance.current = new Chart(ctx, {
-              type: 'line',
-              data: {
-                labels: ['3월 모의고사', '6월 모의고사', '9월 모의고사', '10월 모의고사'],
-                datasets: [{
-                  label: '전국연합 학력평가 평균 등급',
-                  data: [marAvg, junAvg, sepAvg, octAvg],
-                  borderColor: '#3a6351',
-                  backgroundColor: 'rgba(58, 99, 81, 0.2)',
-                  borderWidth: 3,
-                  pointRadius: 6,
-                  pointBackgroundColor: '#234235',
-                  tension: 0.1
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  y: {
-                    reverse: true,
-                    min: 1,
-                    max: 9,
-                    title: { display: true, text: '등급 (1~9)' }
-                  }
-                }
-              }
-            });
-          }
-        }
-      }, [currentTab, internalGradesForm, mockGradesForm]);
-
-      // Subject Multi-Select Toggle Handler
-      const toggleSubject = (sem, category, subject) => {
-        if (!isTeacher) return;
-        setSubjectsForm(prev => {
-          const currentList = prev[sem][category] || [];
-          const exists = currentList.includes(subject);
-          const updated = exists ? currentList.filter(s => s !== subject) : [...currentList, subject];
-          return {
-            ...prev,
-            [sem]: {
-              ...prev[sem],
-              [category]: updated
-            }
-          };
-        });
-      };
-
-      const saveCareerData = () => {
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: {
-            ...prev[student.id],
-            targetCareer: careerForm,
-            targetMajor: majorForm,
-            subjects: subjectsForm,
-            roadmapDetails: roadmapDetailsForm
-          }
-        }));
-        alert('진로, 선택과목 및 로드맵 세부사항이 저장되었습니다.');
-      };
-
-      const saveGradesData = () => {
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: {
-            ...prev[student.id],
-            internalGrades: internalGradesForm,
-            mockGrades: mockGradesForm
-          }
-        }));
-        alert('내신 및 학력평가 성적 기록이 저장되었습니다.');
-      };
-
-      const handleAddLog = (e) => {
-        e.preventDefault();
-        if (!newLog.content) return;
-        const updatedLogs = [...student.logs, { id: Date.now(), ...newLog }];
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: { ...prev[student.id], logs: updatedLogs }
-        }));
-        setNewLog({
-          date: new Date().toISOString().split('T')[0],
-          category: '성적 향상 및 학습 전략',
-          content: '',
-          plan: ''
-        });
-      };
-
-      // Appointment Slot Counter
-      const bookingSlotsCount = useMemo(() => {
-        if (!bookingForm.date || !appointments) return 0;
-        return appointments.filter(a => a.date === bookingForm.date && a.status !== '거절').length;
-      }, [bookingForm.date, appointments]);
-
-      const handleBookingSubmit = (e) => {
-        e.preventDefault();
-        if (!bookingForm.date || !bookingForm.reason) {
-          alert('날짜와 상담 사유를 입력해 주세요.');
-          return;
-        }
-
-        const day = new Date(bookingForm.date).getDay();
-        if (day === 0 || day === 6) {
-          alert('평일에만 상담 신청이 가능합니다.');
-          return;
-        }
-
-        if (bookingSlotsCount >= 2) {
-          alert('해당 일자는 하루 정원(2명)이 마감되었습니다.');
-          return;
-        }
-
-        const newApp = {
-          id: Date.now(),
-          studentId: student.id,
-          name: student.name,
-          date: bookingForm.date,
-          category: bookingForm.category,
-          reason: bookingForm.reason,
-          status: '신청'
-        };
-
-        setAppointments(prev => [...prev, newApp]);
-        alert('상담 신청이 완료되었습니다.');
-        setBookingForm({ date: '', category: '성적 향상 및 학습 전략', reason: '' });
-      };
-
-      return (
-        <div>
-          {!isTeacher && (
-            <div class="mb-6 bg-[#fffdf7] p-2 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-              <div class="grid grid-cols-3 gap-2">
-                <button
-                  onClick={() => setLocalActiveTab('career')}
-                  class={`py-3 px-3 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
-                    currentTab === 'career' ? 'bg-[#7ba05b] text-white shadow-sm' : 'text-[#6c7d64] hover:bg-[#f2f6eb]'
-                  }`}
-                >
-                  <Icon name="compass" size={16} />
-                  <span>🎯 진로/선택과목</span>
-                </button>
-                <button
-                  onClick={() => setLocalActiveTab('grades')}
-                  class={`py-3 px-3 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
-                    currentTab === 'grades' ? 'bg-[#7ba05b] text-white shadow-sm' : 'text-[#6c7d64] hover:bg-[#f2f6eb]'
-                  }`}
-                >
-                  <Icon name="bar-chart-2" size={16} />
-                  <span>📊 성적 그래프</span>
-                </button>
-                <button
-                  onClick={() => setLocalActiveTab('counseling')}
-                  class={`py-3 px-3 rounded-2xl font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${
-                    currentTab === 'counseling' ? 'bg-[#7ba05b] text-white shadow-sm' : 'text-[#6c7d64] hover:bg-[#f2f6eb]'
-                  }`}
-                >
-                  <Icon name="calendar" size={16} />
-                  <span>💬 상담 신청</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 1: CAREER & MULTI-SELECT SUBJECTS & DETAILED ROADMAP */}
-          {currentTab === 'career' && (
-            <div class="space-y-6">
-              <div class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
-                <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                  <Icon name="target" size={16} className="text-[#7ba05b]" /> 희망 진로 및 계열
-                </h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-xs font-bold text-[#8c9e83] mb-1 ml-1">희망 진로</label>
-                    <input
-                      type="text"
-                      disabled={!isTeacher}
-                      class="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
-                      value={careerForm}
-                      onChange={(e) => setCareerForm(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-bold text-[#8c9e83] mb-1 ml-1">희망 학과 / 계열</label>
-                    <input
-                      type="text"
-                      disabled={!isTeacher}
-                      class="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
-                      value={majorForm}
-                      onChange={(e) => setMajorForm(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Course Multi-Selection */}
-              <div class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
-                <div class="flex justify-between items-center">
-                  <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                    <Icon name="book-open" size={16} className="text-[#7ba05b]" /> 고교학점제 2학년 선택과목 (중복 선택 가능)
-                  </h3>
-                  <span class="text-[11px] font-bold text-[#7ba05b] bg-[#f0f5e8] px-2.5 py-1 rounded-full">개별 중복 체크</span>
-                </div>
-
-                {/* Sem 1 Multi-select */}
-                <div class="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] space-y-3">
-                  <span class="text-xs font-extrabold text-[#5c7a43] flex items-center gap-1">
-                    🍃 [1학기 선택 과목]
-                  </span>
-                  <div class="space-y-3 text-xs">
-                    <div>
-                      <span class="font-bold text-[#8c9e83] block mb-1.5">사회 탐구 영역</span>
-                      <div class="flex flex-wrap gap-1.5">
-                        {SUBJECT_OPTIONS.sem1.social.map(subj => {
-                          const isSelected = (subjectsForm.sem1.social || []).includes(subj);
-                          return (
-                            <button
-                              key={subj}
-                              type="button"
-                              onClick={() => toggleSubject('sem1', 'social', subj)}
-                              class={`px-3 py-1.5 rounded-xl border-2 font-bold transition ${
-                                isSelected ? 'bg-[#7ba05b] text-white border-[#688a4a]' : 'bg-[#fffdf7] text-[#6c7d64] border-[#dde5d0]'
-                              }`}
-                            >
-                              {subj} {isSelected && '✓'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <span class="font-bold text-[#8c9e83] block mb-1.5">과학 탐구 영역</span>
-                      <div class="flex flex-wrap gap-1.5">
-                        {SUBJECT_OPTIONS.sem1.science.map(subj => {
-                          const isSelected = (subjectsForm.sem1.science || []).includes(subj);
-                          return (
-                            <button
-                              key={subj}
-                              type="button"
-                              onClick={() => toggleSubject('sem1', 'science', subj)}
-                              class={`px-3 py-1.5 rounded-xl border-2 font-bold transition ${
-                                isSelected ? 'bg-[#7ba05b] text-white border-[#688a4a]' : 'bg-[#fffdf7] text-[#6c7d64] border-[#dde5d0]'
-                              }`}
-                            >
-                              {subj} {isSelected && '✓'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sem 2 Multi-select */}
-                <div class="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] space-y-3">
-                  <span class="text-xs font-extrabold text-[#486382] flex items-center gap-1">
-                    💧 [2학기 선택 과목]
-                  </span>
-                  <div class="space-y-3 text-xs">
-                    <div>
-                      <span class="font-bold text-[#8c9e83] block mb-1.5">수학 영역</span>
-                      <div class="flex flex-wrap gap-1.5">
-                        {SUBJECT_OPTIONS.sem2.math.map(subj => {
-                          const isSelected = (subjectsForm.sem2.math || []).includes(subj);
-                          return (
-                            <button
-                              key={subj}
-                              type="button"
-                              onClick={() => toggleSubject('sem2', 'math', subj)}
-                              class={`px-3 py-1.5 rounded-xl border-2 font-bold transition ${
-                                isSelected ? 'bg-[#486382] text-white border-[#39506a]' : 'bg-[#fffdf7] text-[#6c7d64] border-[#dde5d0]'
-                              }`}
-                            >
-                              {subj} {isSelected && '✓'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <span class="font-bold text-[#8c9e83] block mb-1.5">사회 탐구 영역</span>
-                      <div class="flex flex-wrap gap-1.5">
-                        {SUBJECT_OPTIONS.sem2.social.map(subj => {
-                          const isSelected = (subjectsForm.sem2.social || []).includes(subj);
-                          return (
-                            <button
-                              key={subj}
-                              type="button"
-                              onClick={() => toggleSubject('sem2', 'social', subj)}
-                              class={`px-3 py-1.5 rounded-xl border-2 font-bold transition ${
-                                isSelected ? 'bg-[#486382] text-white border-[#39506a]' : 'bg-[#fffdf7] text-[#6c7d64] border-[#dde5d0]'
-                              }`}
-                            >
-                              {subj} {isSelected && '✓'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <span class="font-bold text-[#8c9e83] block mb-1.5">과학 탐구 영역</span>
-                      <div class="flex flex-wrap gap-1.5">
-                        {SUBJECT_OPTIONS.sem2.science.map(subj => {
-                          const isSelected = (subjectsForm.sem2.science || []).includes(subj);
-                          return (
-                            <button
-                              key={subj}
-                              type="button"
-                              onClick={() => toggleSubject('sem2', 'science', subj)}
-                              class={`px-3 py-1.5 rounded-xl border-2 font-bold transition ${
-                                isSelected ? 'bg-[#486382] text-white border-[#39506a]' : 'bg-[#fffdf7] text-[#6c7d64] border-[#dde5d0]'
-                              }`}
-                            >
-                              {subj} {isSelected && '✓'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Roadmap Checklist with Detailed Input Memo */}
-              <div class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
-                <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                  <Icon name="check-square" size={16} className="text-[#7ba05b]" /> 진로 준비 로드맵 체크리스트 및 세부내용
-                </h3>
-                <div class="space-y-3">
-                  {ROADMAP_ITEMS.map(item => {
-                    const memo = roadmapDetailsForm[item] || '';
-                    const isChecked = !!memo;
-                    return (
-                      <div key={item} class="p-3.5 rounded-2xl border-2 bg-[#f8faf2] border-[#e3eed4] space-y-2">
-                        <div class="flex items-center justify-between">
-                          <span class="text-xs font-extrabold text-[#4a5843] flex items-center gap-1.5">
-                            <span class={`w-2.5 h-2.5 rounded-full ${isChecked ? 'bg-[#7ba05b]' : 'bg-[#d0dcc0]'}`}></span>
-                            {item}
-                          </span>
-                          <span class="text-[10px] font-bold text-[#8c9e83]">
-                            {isChecked ? '수행 항목 기재 완료' : '미기재'}
-                          </span>
-                        </div>
-                        <input
-                          type="text"
-                          disabled={!isTeacher}
-                          placeholder={`${item} 관련 간단한 세부활동 내용을 입력하세요...`}
-                          class="w-full px-3 py-2 bg-[#fffdf7] border-2 border-[#dde5d0] rounded-xl text-xs font-bold text-[#3b4737] placeholder-[#a8b8a0] focus:outline-none focus:border-[#7ba05b]"
-                          value={memo}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setRoadmapDetailsForm(prev => ({ ...prev, [item]: val }));
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {isTeacher && (
-                <button
-                  onClick={saveCareerData}
-                  class="w-full py-3.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white font-extrabold rounded-2xl transition text-sm shadow-md"
-                >
-                  진로 및 선택과목 정보 저장하기
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: GRADES WITH CHARTS & SUBJECT GRADE EDITING */}
-          {currentTab === 'grades' && (
-            <div class="space-y-6">
-              {/* Internal School Grades Section */}
-              <div class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
-                <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                  <Icon name="file-text" size={16} className="text-[#7ba05b]" /> 내신 성적 관리 (1학기/2학기)
-                </h3>
-
-                <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
-                  {['국어', '수학', '영어', '한국사', '사회', '과학'].map((subj, idx) => {
-                    const keys = ['korean', 'math', 'english', 'history', 'social', 'science'];
-                    const key = keys[idx];
-                    const g1 = internalGradesForm.sem1[key];
-                    const g2 = internalGradesForm.sem2[key];
-                    return (
-                      <div key={subj} class="bg-[#f8faf2] p-3 rounded-2xl border-2 border-[#e3eed4]">
-                        <div class="font-extrabold text-[#4a5843] mb-2">{subj}</div>
-                        <div class="space-y-1.5">
-                          <div class="flex justify-between items-center bg-[#fffdf7] p-1.5 rounded-xl border border-[#e3eed4]">
-                            <span class="text-[10px] font-bold text-[#8c9e83]">1학기</span>
-                            {isTeacher ? (
-                              <input
-                                type="number" min="1" max="9"
-                                class="w-9 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
-                                value={g1}
-                                onChange={(e) => setInternalGradesForm({
-                                  ...internalGradesForm,
-                                  sem1: { ...internalGradesForm.sem1, [key]: Number(e.target.value) }
-                                })}
-                              />
-                            ) : <span class="font-extrabold text-[#5c7a43]">{g1}등급</span>}
-                          </div>
-                          <div class="flex justify-between items-center bg-[#fffdf7] p-1.5 rounded-xl border border-[#e3eed4]">
-                            <span class="text-[10px] font-bold text-[#8c9e83]">2학기</span>
-                            {isTeacher ? (
-                              <input
-                                type="number" min="1" max="9"
-                                class="w-9 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
-                                value={g2}
-                                onChange={(e) => setInternalGradesForm({
-                                  ...internalGradesForm,
-                                  sem2: { ...internalGradesForm.sem2, [key]: Number(e.target.value) }
-                                })}
-                              />
-                            ) : <span class="font-extrabold text-[#486382]">{g2}등급</span>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Internal Grades Chart */}
-                <div class="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] h-64 relative">
-                  <h4 class="text-xs font-extrabold text-[#5c7a43] mb-2 flex items-center gap-1">
-                    📈 내신 등급 변화 추이 그래프
-                  </h4>
-                  <div class="h-48 w-full">
-                    <canvas ref={internalChartRef}></canvas>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mock Exam Section with Individual Subject Input */}
-              <div class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
-                <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                  <Icon name="trending-up" size={16} className="text-[#3a6351]" /> 전국연합 학력평가 과목별 등급 입력 및 추이
-                </h3>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                  {[
-                    { title: '3월 학력평가', key: 'mar' },
-                    { title: '6월 학력평가', key: 'jun' },
-                    { title: '9월 학력평가', key: 'sep' },
-                    { title: '10월 학력평가', key: 'oct' }
-                  ].map(m => (
-                    <div key={m.key} class="bg-[#f8faf2] p-3.5 rounded-2xl border-2 border-[#e3eed4] space-y-2">
-                      <div class="font-extrabold text-[#3a6351] text-center border-b pb-1 border-[#e3eed4]">{m.title}</div>
-                      <div class="grid grid-cols-2 gap-1.5">
-                        {[
-                          { label: '국어', field: 'korean' },
-                          { label: '수학', field: 'math' },
-                          { label: '영어', field: 'english' },
-                          { label: '한국사', field: 'history' },
-                          { label: '사회', field: 'social' },
-                          { label: '과학', field: 'science' }
-                        ].map(s => (
-                          <div key={s.field} class="flex justify-between items-center bg-[#fffdf7] px-2 py-1 rounded-lg border border-[#dde5d0]">
-                            <span class="text-[10px] font-bold text-[#8c9e83]">{s.label}</span>
-                            {isTeacher ? (
-                              <input
-                                type="number" min="1" max="9"
-                                class="w-8 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded font-bold"
-                                value={mockGradesForm[m.key][s.field]}
-                                onChange={(e) => setMockGradesForm({
-                                  ...mockGradesForm,
-                                  [m.key]: { ...mockGradesForm[m.key], [s.field]: Number(e.target.value) }
-                                })}
-                              />
-                            ) : (
-                              <span class="font-extrabold text-[#2a5241]">{mockGradesForm[m.key][s.field]}등급</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Mock Exam Grades Chart */}
-                <div class="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] h-64 relative">
-                  <h4 class="text-xs font-extrabold text-[#3a6351] mb-2 flex items-center gap-1">
-                    📈 학력평가 평균 등급 변화 추이 그래프
-                  </h4>
-                  <div class="h-48 w-full">
-                    <canvas ref={mockChartRef}></canvas>
-                  </div>
-                </div>
-              </div>
-
-              {isTeacher && (
-                <button
-                  onClick={saveGradesData}
-                  class="w-full py-3.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white font-extrabold rounded-2xl transition text-sm shadow-md"
-                >
-                  성적 기록 저장하기
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* TAB 3: COUNSELING LOG & BOOKING WITH SLOT STATUS */}
-          {currentTab === 'counseling' && (
-            <div class="space-y-6">
-              {isTeacher ? (
-                <div class="space-y-6">
-                  <form onSubmit={handleAddLog} class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
-                    <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                      <Icon name="edit-3" size={16} className="text-[#7ba05b]" /> 신규 상담 기록 작성
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-bold">
-                      <div>
-                        <label class="block text-[#8c9e83] mb-1">상담 일자</label>
-                        <input
-                          type="date"
-                          class="w-full p-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-xl text-[#3b4737] focus:outline-none focus:border-[#7ba05b]"
-                          value={newLog.date}
-                          onChange={(e) => setNewLog({ ...newLog, date: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label class="block text-[#8c9e83] mb-1">상담 카테고리</label>
-                        <select
-                          class="w-full p-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-xl text-[#3b4737] focus:outline-none focus:border-[#7ba05b]"
-                          value={newLog.category}
-                          onChange={(e) => setNewLog({ ...newLog, category: e.target.value })}
-                        >
-                          <option value="성적 향상 및 학습 전략">성적 향상 및 학습 전략</option>
-                          <option value="진로진학 및 고교학점제">진로진학 및 고교학점제</option>
-                          <option value="기타 개인적인 고민">기타 개인적인 고민</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-bold text-[#8c9e83] mb-1">상담 내용</label>
-                      <textarea
-                        rows="2"
-                        placeholder="상담 요약 및 관찰 내용..."
-                        class="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] placeholder-[#a1b398] focus:outline-none focus:border-[#7ba05b]"
-                        value={newLog.content}
-                        onChange={(e) => setNewLog({ ...newLog, content: e.target.value })}
-                      ></textarea>
-                    </div>
-                    <div>
-                      <label class="block text-xs font-bold text-[#8c9e83] mb-1">추후 지도 계획</label>
-                      <textarea
-                        rows="2"
-                        placeholder="향후 지도 방향..."
-                        class="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] placeholder-[#a1b398] focus:outline-none focus:border-[#7ba05b]"
-                        value={newLog.plan}
-                        onChange={(e) => setNewLog({ ...newLog, plan: e.target.value })}
-                      ></textarea>
-                    </div>
-                    <button
-                      type="submit"
-                      class="w-full py-3 bg-[#7ba05b] hover:bg-[#688a4a] text-white font-extrabold rounded-2xl text-xs transition shadow-sm"
-                    >
-                      상담 기록 등록
-                    </button>
-                  </form>
-
-                  <div class="space-y-3">
-                    <h3 class="font-extrabold text-[#4a5843] text-sm">상담 히스토리 ({student.logs.length}건)</h3>
-                    <div class="relative pl-5 border-l-4 border-dashed border-[#c2d6b2] space-y-4">
-                      {student.logs.slice().reverse().map(log => (
-                        <div key={log.id} class="relative bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
-                          <div class="absolute -left-[27px] top-4 w-4 h-4 bg-[#7ba05b] rounded-full border-2 border-white"></div>
-                          <div class="flex justify-between items-center mb-1">
-                            <span class="text-xs font-extrabold text-[#5c7a43]">{log.category}</span>
-                            <span class="text-[11px] font-bold text-[#8c9e83]">{log.date}</span>
-                          </div>
-                          <p class="text-xs font-bold text-[#3b4737] mb-2">{log.content}</p>
-                          {log.plan && (
-                            <div class="p-2.5 bg-[#f6f8f0] rounded-xl text-[11px] font-bold text-[#6a7a61] border border-[#e3eed4]">
-                              <span class="font-extrabold text-[#4a5843]">지도 계획: </span>{log.plan}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* STUDENT BOOKING WITH REAL-TIME CLOSING STATUS */
-                <div class="space-y-6">
-                  <form onSubmit={handleBookingSubmit} class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] shadow-sm space-y-4">
-                    <h3 class="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                      <Icon name="calendar" size={16} className="text-[#7ba05b]" /> 담임선생님 1:1 상담 신청
-                    </h3>
-
-                    <div>
-                      <label class="block text-xs font-bold text-[#8c9e83] mb-1">희망 상담 일자 (평일만 가능)</label>
-                      <input
-                        type="date"
-                        required
-                        class="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] focus:outline-none focus:border-[#7ba05b]"
-                        value={bookingForm.date}
-                        onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })}
-                      />
-
-                      {/* Display Slot Status */}
-                      {bookingForm.date && (
-                        <div class="mt-2.5 p-3 rounded-2xl border-2 flex justify-between items-center transition bg-[#f8faf2] border-[#e3eed4]">
-                          <div class="text-xs font-extrabold text-[#4a5843]">
-                            📅 선택 일자 예약 현황: <span class="text-[#7ba05b]">{bookingSlotsCount} / 2명</span>
-                          </div>
-                          {bookingSlotsCount >= 2 ? (
-                            <span class="px-3 py-1 bg-[#f8ebf2] text-[#d96b63] border border-[#f2d0db] rounded-full text-xs font-extrabold flex items-center gap-1">
-                              🔴 당일 마감 완료
-                            </span>
-                          ) : (
-                            <span class="px-3 py-1 bg-[#eaf4f0] text-[#3a6351] border border-[#c1e2d4] rounded-full text-xs font-extrabold flex items-center gap-1">
-                              🟢 신청 가능
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label class="block text-xs font-bold text-[#8c9e83] mb-1">상담 분야</label>
-                      <select
-                        class="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] focus:outline-none focus:border-[#7ba05b]"
-                        value={bookingForm.category}
-                        onChange={(e) => setBookingForm({ ...bookingForm, category: e.target.value })}
-                      >
-                        <option value="성적 향상 및 학습 전략">성적 향상 및 학습 전략</option>
-                        <option value="진로진학 및 고교학점제">진로진학 및 고교학점제</option>
-                        <option value="기타 개인적인 고민">기타 개인적인 고민</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label class="block text-xs font-bold text-[#8c9e83] mb-1">상담 사유</label>
-                      <textarea
-                        rows="3"
-                        required
-                        placeholder="상담을 희망하는 내용을 자유롭게 작성해 주세요."
-                        class="w-full p-3 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] placeholder-[#a1b398] focus:outline-none focus:border-[#7ba05b]"
-                        value={bookingForm.reason}
-                        onChange={(e) => setBookingForm({ ...bookingForm, reason: e.target.value })}
-                      ></textarea>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={bookingSlotsCount >= 2}
-                      class={`w-full py-3.5 text-white font-extrabold rounded-2xl text-xs transition shadow-md ${
-                        bookingSlotsCount >= 2 ? 'bg-[#c3cfb8] cursor-not-allowed' : 'bg-[#7ba05b] hover:bg-[#688a4a]'
-                      }`}
-                    >
-                      {bookingSlotsCount >= 2 ? '해당 일자 상담이 마감되었습니다' : '상담 신청 제출하기'}
-                    </button>
-                  </form>
-
-                  <div class="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
-                    <h4 class="font-extrabold text-[#4a5843] text-xs">나의 상담 신청 현황</h4>
-                    <div class="space-y-2">
-                      {appointments.filter(a => a.studentId === student.id).length === 0 ? (
-                        <p class="text-xs font-bold text-[#8c9e83]">신청 내역이 없습니다.</p>
-                      ) : (
-                        appointments.filter(a => a.studentId === student.id).map(app => (
-                          <div key={app.id} class="bg-[#f8faf2] p-3.5 rounded-2xl border-2 border-[#e3eed4] flex justify-between items-center text-xs font-bold">
-                            <div>
-                              <div class="text-[#4a5843]">{app.date} <span class="text-[#8c9e83]">({app.category})</span></div>
-                              <div class="text-[#72826a] text-[11px] font-bold mt-0.5">{app.reason}</div>
-                            </div>
-                            <span class={`px-3 py-1 rounded-full text-[10px] font-extrabold ${
-                              app.status === '승인' ? 'bg-[#eaf4f0] text-[#2a5241] border border-[#b8decb]' : 'bg-[#fff3d1] text-[#7a5b28] border border-[#f2d99d]'
-                            }`}>
-                              {app.status}
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-  </script>
 </body>
 </html>
