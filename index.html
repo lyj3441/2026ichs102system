@@ -146,43 +146,37 @@
     }, {});
 
     // 5등급제 평균 성적(1.0~5.0)을 9등급제로 직접 변환하는 통합 함수
-    function convert5To9Grade(avg5Input) {
-      const avg5 = parseFloat(avg5Input);
-      if (isNaN(avg5) || avg5 <= 0) return "미산출";
+function convert5To9Grade(avg5Input) {
+  const avg5 = parseFloat(avg5Input);
+  if (isNaN(avg5) || avg5 <= 0) return "미산출";
 
-      let p = 50.0;
-      if (avg5 <= 1.0) {
-        p = 2.0;
-      } else if (avg5 <= 2.0) {
-        p = 2.0 + (avg5 - 1.0) * 8.0;
-      } else if (avg5 <= 3.0) {
-        p = 10.0 + (avg5 - 2.0) * 24.0;
-      } else if (avg5 <= 4.0) {
-        p = 34.0 + (avg5 - 3.0) * 32.0;
-      } else {
-        p = 66.0 + (avg5 - 4.0) * 24.0;
-      }
+  // 1.0 이하 최상위 등급인 경우 즉시 1.00 반환 (예외 처리)
+  if (avg5 <= 1.0) {
+    return "1.00";
+  }
 
-      const prob = p / 100;
-      function normSInv(pVal) {
-        if (pVal >= 1) return 8;
-        if (pVal <= 0) return -8;
-        let q;
-        if (pVal < 0.5) {
-          q = Math.sqrt(-2 * Math.log(pVal));
-          return -(((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
-        } else {
-          q = Math.sqrt(-2 * Math.log(1 - pVal));
-          return (((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
-        }
-      }
+  let p = 50.0;
+  if (avg5 <= 1.0) p = 2.0;
+  else if (avg5 <= 1.5) p = 2.0 + (avg5 - 1.0) * 12.0;
+  else if (avg5 <= 2.0) p = 8.0 + (avg5 - 1.5) * 18.0;
+  else if (avg5 <= 2.5) p = 17.0 + (avg5 - 2.0) * 24.0;
+  else if (avg5 <= 3.0) p = 29.0 + (avg5 - 2.5) * 20.0;
+  else if (avg5 <= 3.5) p = 39.0 + (avg5 - 3.0) * 22.0;
+  else if (avg5 <= 4.0) p = 50.0 + (avg5 - 3.5) * 24.0;
+  else if (avg5 <= 4.5) p = 62.0 + (avg5 - 4.0) * 26.0;
+  else p = 75.0 + (avg5 - 4.5) * 25.0;
 
-      const z = normSInv(prob);
-      const converted = 5 + (1.75 * z);
-      const finalGrade = Math.max(1.00, Math.min(9.00, converted));
+  const prob = p / 100;
+  const z = normSInv(prob);
+  
+  // 정규화 변환식
+  const converted = 5 + (1.75 * z);
+  
+  // 1.00 ~ 9.00 범위 제어
+  const finalGrade = Math.max(1.00, Math.min(9.00, converted));
 
-      return finalGrade.toFixed(2);
-    }
+  return finalGrade.toFixed(2);
+}
 
     // AI 수시 추천 함수
     const getSusiRecommendation = (internalGrades) => {
