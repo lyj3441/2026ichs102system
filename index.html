@@ -155,32 +155,33 @@
     };
 
     // 누적비(P, %)를 입력받아 환산 9등급을 반환하는 함수
-    function convertTo9Grade(p) {
-      if (p <= 0 || p >= 100) return "유효한 누적비를 입력하세요 (0 초과 100 미만)";
-      
-      const prob = p / 100;
-      
-      function normSInv(p) {
-        if (p >= 1) return 8;
-        if (p <= 0) return -8;
-        
-        let q, r;
-        if (p < 0.5) {
-          q = Math.sqrt(-2 * Math.log(p));
-          return -(((0.010328 * q + 0.802853) * q + 2.515517) / 
-                   (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
-        } else {
-          q = Math.sqrt(-2 * Math.log(1 - p));
-          return (((0.010328 * q + 0.802853) * q + 2.515517) / 
-                  (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
-        }
-      }
-
-      const z = normSInv(prob);
-      const grade = 5 - (1.75 * z);
-
-      return grade.toFixed(2);
+function convertTo9Grade(p) {
+  if (p <= 0 || p >= 100) return "5.00";
+  const prob = p / 100;
+  
+  // 표준정규분포 역함수 근사식 (NormSInv)
+  function normSInv(p) {
+    if (p >= 1) return 8;
+    if (p <= 0) return -8;
+    let q;
+    if (p < 0.5) {
+      q = Math.sqrt(-2 * Math.log(p));
+      return -(((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
+    } else {
+      q = Math.sqrt(-2 * Math.log(1 - p));
+      return (((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
     }
+  }
+
+  const z = normSInv(prob);
+  
+  // 🔧 부호를 + 로 변경하여 상위 백분위일수록 1등급에 가깝게 계산
+  const grade = 5 + (1.75 * z); 
+
+  // 최소 1.00등급 ~ 최대 9.00등급 범위 제한
+  const finalGrade = Math.max(1.00, Math.min(9.00, grade));
+  return finalGrade.toFixed(2);
+}
 
     // --- AI Recommendations Helper ---
     const getSusiRecommendation = (internalGrades) => {
