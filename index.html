@@ -16,6 +16,10 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- Firebase CDN (Compat Mode) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <style>
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/NanumSquareRound.woff');
     
@@ -50,6 +54,23 @@
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
 
+    // 🔥 Firebase 설정 및 초기화
+    const firebaseConfig = {
+      apiKey: "AIzaSyDmQQn4zIO_abgTFXjuZ0qcYlr3e27g5_A",
+      authDomain: "ichs102system.firebaseapp.com",
+      databaseURL: "https://ichs102system-default-rtdb.firebaseio.com",
+      projectId: "ichs102system",
+      storageBucket: "ichs102system.firebasestorage.app",
+      messagingSenderId: "309285659928",
+      appId: "1:309285659928:web:ca30c4d4be8ac922bb6a6d",
+      measurementId: "G-NHG2XC3NGV"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+
     // --- Lucide Icon Helper ---
     const Icon = ({ name, size = 18, className = "" }) => {
       useEffect(() => {
@@ -81,7 +102,7 @@
     };
 
     const ROADMAP_ITEMS = [
-      '꿈두레 교육과정', '동아리 활동', '프로젝트 봉사활동', 
+      '학급자치회', '꿈두레 교육과정', '동아리 활동', '프로젝트 봉사활동', 
       '수요칼리지', '글로벌 칼리지', '학술제', '꿈이음대학', '기타 자율진로활동'
     ];
 
@@ -97,13 +118,13 @@
       }
     };
 
-    // 모든 학생 데이터 초기화 (학번, 이름만 유지)
     const INITIAL_STUDENT_DATA = MOCK_STUDENTS_LIST.reduce((acc, student) => {
       acc[student.id] = {
         id: student.id,
         name: student.name,
         targetCareer: '미정',
         targetMajor: '미정',
+        targetField: '인문사회',
         subjects: {
           sem1: { social: [], science: [] },
           sem2: { math: [], social: [], science: [] }
@@ -124,7 +145,44 @@
       return acc;
     }, {});
 
-    // --- AI Recommendations Helper (경기진협 5등급제 -> 9등급제 환산 기준) ---
+    // 5등급제 평균 등급을 바탕으로 누적비(P, %)를 추정하는 헬퍼 함수
+    const getCumulativeRatioFrom5Grade = (avg5) => {
+      if (avg5 <= 1.0) return 2.0;
+      if (avg5 <= 2.0) return 10.0 + (avg5 - 1.0) * 24.0; // 10% ~ 34%
+      if (avg5 <= 3.0) return 34.0 + (avg5 - 2.0) * 32.0; // 34% ~ 66%
+      if (avg5 <= 4.0) return 66.0 + (avg5 - 3.0) * 24.0; // 66% ~ 90%
+      return 90.0 + (avg5 - 4.0) * 8.0;                 // 90% ~ 98%
+    };
+
+    // 누적비(P, %)를 입력받아 환산 9등급을 반환하는 함수[cite: 4]
+    function convertTo9Grade(p) {
+      if (p <= 0 || p >= 100) return "유효한 누적비를 입력하세요 (0 초과 100 미만)";[cite: 4]
+      
+      const prob = p / 100;[cite: 4]
+      
+      function normSInv(p) {
+        if (p >= 1) return 8;[cite: 4]
+        if (p <= 0) return -8;[cite: 4]
+        
+        let q, r;[cite: 4]
+        if (p < 0.5) {[cite: 4]
+          q = Math.sqrt(-2 * Math.log(p));[cite: 4]
+          return -(((0.010328 * q + 0.802853) * q + 2.515517) / 
+                   (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));[cite: 4]
+        } else {
+          q = Math.sqrt(-2 * Math.log(1 - p));[cite: 4]
+          return (((0.010328 * q + 0.802853) * q + 2.515517) / 
+                  (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));[cite: 4]
+        }
+      }
+
+      const z = normSInv(prob);[cite: 4]
+      const grade = 5 - (1.75 * z);[cite: 4]
+
+      return grade.toFixed(2);[cite: 4]
+    }
+
+    // --- AI Recommendations Helper ---
     const getSusiRecommendation = (internalGrades) => {
       const allVals = [
         ...Object.values(internalGrades.sem1 || {}),
@@ -137,41 +195,41 @@
           converted9: '미산출', 
           range: '성적 입력 필요', 
           univs: '내신 성적을 입력해 주세요.', 
-          tip: '1, 2학기 내신 성적을 입력하면 경기진협 환산배치표 기준 적정 대학을 추천해 드립니다.' 
+          tip: '1, 2학기 내신 성적을 입력하면 정밀 환산 공식 기준 적정 대학을 추천해 드립니다.' 
         };
       }
 
       const avg5 = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
-      // 경기진협 기준 5등급제 -> 9등급제 환산 수식
-      const converted9 = (avg5 - 1) * 2 + 1;
+      const cumRatio = getCumulativeRatioFrom5Grade(avg5);
+      const converted9Val = parseFloat(convertTo9Grade(cumRatio));
 
       let range = '';
       let univs = '';
       let tip = '';
 
-      if (converted9 <= 1.5) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 최상위권)`;
+      if (converted9Val <= 1.5) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 최상위권)`;
         univs = '서울대, 연세대, 고려대, 카이스트, 포스텍, 의치한약수 주요학과';
         tip = '학생부 종합전형 세특의 학업 역량 및 깊이 있는 탐구 활동 증명이 핵심입니다.';
-      } else if (converted9 <= 2.3) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 상위권)`;
+      } else if (converted9Val <= 2.3) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 상위권)`;
         univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 시립대 상위권 학과';
         tip = '수능 최저학력기준 충족 여부 점검과 전공 관련 과목 선택의 개연성을 확보하세요.';
-      } else if (converted9 <= 3.5) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 중상위권)`;
+      } else if (converted9Val <= 3.5) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중상위권)`;
         univs = '건국대, 동국대, 홍익대, 국민대, 숭실대, 세종대, 인하대, 아주대';
         tip = '주요 교과 내신 성적 유지 및 학종 세특 내 진로 연계활동의 구체성이 중요합니다.';
-      } else if (converted9 <= 5.0) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 중위권)`;
+      } else if (converted9Val <= 5.0) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중위권)`;
         univs = '단국대, 광운대, 명지대, 상명대, 가천대, 인천대, 경기대, 가톨릭대';
         tip = '교과 전형 수능 최저 준비와 함께 교과 세특 내 성실성을 적극 어필하세요.';
       } else {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9.toFixed(2)}등급 - 일반권)`;
+        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 일반권)`;
         univs = '수도권 주요 대학 및 지방 거점 국립대, 면접/약술형 논술 전형 병행 고려';
         tip = '취약 과목 성적 보완과 함께 맞춤형 교과/면접 전형 입시 전략 수립이 요구됩니다.';
       }
 
-      return { avg5: avg5.toFixed(2), converted9: converted9.toFixed(2), range, univs, tip };
+      return { avg5: avg5.toFixed(2), converted9: converted9Val.toFixed(2), range, univs, tip };
     };
 
     const getJeongsiRecommendation = (mockGrades) => {
@@ -201,7 +259,7 @@
       }
     };
 
-    const getRoadmapAnalysis = (career, major, subjects, roadmapDetails) => {
+    const getRoadmapAnalysis = (career, major, field, subjects, roadmapDetails) => {
       const sem1Count = (subjects?.sem1?.social?.length || 0) + (subjects?.sem1?.science?.length || 0);
       const sem2Count = (subjects?.sem2?.math?.length || 0) + (subjects?.sem2?.social?.length || 0) + (subjects?.sem2?.science?.length || 0);
       const detailCount = Object.values(roadmapDetails || {}).filter(v => v && v.trim() !== '').length;
@@ -216,7 +274,7 @@
       }
 
       if (sem1Count + sem2Count >= 3) {
-        strengths.push(`희망 계열(${major || '전공'})과 연계된 2학년 선택과목 이수 계획이 충실함.`);
+        strengths.push(`희망 계열(${field || '계열'}, 학과: ${major || '학과'})과 연계된 2학년 선택과목 이수 계획이 충실함.`);
       } else {
         improvements.push('진로 진학 계열성에 맞는 2학년 탐구/수학 선택 과목 보완 권장.');
       }
@@ -224,7 +282,7 @@
       if (detailCount >= 3) {
         strengths.push(`진로 로드맵 활동(${detailCount}개 항목)이 구체적으로 작성되어 진정성이 높음.`);
       } else {
-        improvements.push('꿈두레, 수요칼리지, 학술제 등 창의적 체험활동 로드맵 항목 추가 작성 필요.');
+        improvements.push('학급자치회, 꿈두레, 수요칼리지, 학술제 등 창의적 체험활동 로드맵 항목 추가 작성 필요.');
       }
 
       return { strengths, improvements };
@@ -232,23 +290,12 @@
 
     // --- Main App Component ---
     function App() {
-      const [students, setStudents] = useState(() => {
-        const saved = localStorage.getItem('school_students_data_v6');
-        return saved ? JSON.parse(saved) : INITIAL_STUDENT_DATA;
-      });
-
-      const [passwords, setPasswords] = useState(() => {
-        const saved = localStorage.getItem('school_passwords_v6');
-        return saved ? JSON.parse(saved) : INITIAL_PASSWORDS;
-      });
-
-      const [appointments, setAppointments] = useState(() => {
-        const saved = localStorage.getItem('school_appointments_v6');
-        return saved ? JSON.parse(saved) : [];
-      });
+      const [students, setStudents] = useState(INITIAL_STUDENT_DATA);
+      const [passwords, setPasswords] = useState(INITIAL_PASSWORDS);
+      const [appointments, setAppointments] = useState([]);
+      const [loading, setLoading] = useState(true);
 
       const [currentUser, setCurrentUser] = useState(null);
-      
       const [idInput, setIdInput] = useState('');
       const [pwInput, setPwInput] = useState('');
       const [loginError, setLoginError] = useState('');
@@ -265,17 +312,45 @@
       const [newStudentModal, setNewStudentModal] = useState(false);
       const [newStudentForm, setNewStudentForm] = useState({ id: '', name: '' });
 
+      // Firestore 실시간 데이터 구독
       useEffect(() => {
-        localStorage.setItem('school_students_data_v6', JSON.stringify(students));
-      }, [students]);
+        const unsubscribeStudents = db.collection('students').onSnapshot(snapshot => {
+          if (!snapshot.empty) {
+            const data = {};
+            snapshot.forEach(doc => {
+              data[doc.id] = doc.data();
+            });
+            setStudents(data);
+          } else {
+            Object.entries(INITIAL_STUDENT_DATA).forEach(([id, studentData]) => {
+              db.collection('students').doc(id).set(studentData);
+            });
+          }
+        });
 
-      useEffect(() => {
-        localStorage.setItem('school_passwords_v6', JSON.stringify(passwords));
-      }, [passwords]);
+        const unsubscribePw = db.collection('settings').doc('passwords').onSnapshot(doc => {
+          if (doc.exists) {
+            setPasswords(doc.data());
+          } else {
+            db.collection('settings').doc('passwords').set(INITIAL_PASSWORDS);
+          }
+        });
 
-      useEffect(() => {
-        localStorage.setItem('school_appointments_v6', JSON.stringify(appointments));
-      }, [appointments]);
+        const unsubscribeApps = db.collection('appointments').onSnapshot(snapshot => {
+          const apps = [];
+          snapshot.forEach(doc => {
+            apps.push({ id: doc.id, ...doc.data() });
+          });
+          setAppointments(apps);
+          setLoading(false);
+        });
+
+        return () => {
+          unsubscribeStudents();
+          unsubscribePw();
+          unsubscribeApps();
+        };
+      }, []);
 
       const handleLogin = (e) => {
         e.preventDefault();
@@ -315,7 +390,7 @@
         setSelectedStudentId(null);
       };
 
-      const handleChangePassword = (e) => {
+      const handleChangePassword = async (e) => {
         e.preventDefault();
         setPwChangeError('');
 
@@ -336,13 +411,15 @@
           return;
         }
 
-        setPasswords(prev => ({ ...prev, [currentUser.id]: newPw }));
+        const updatedPw = { ...passwords, [currentUser.id]: newPw };
+        await db.collection('settings').doc('passwords').set(updatedPw);
+
         alert('비밀번호가 성공적으로 변경되었습니다!');
         setPwModalOpen(false);
         setChangePwForm({ current: '', newPw: '', confirmPw: '' });
       };
 
-      const handleAddStudent = (e) => {
+      const handleAddStudent = async (e) => {
         e.preventDefault();
         if (!newStudentForm.id || !newStudentForm.name) return;
         if (students[newStudentForm.id]) {
@@ -355,6 +432,7 @@
           name: newStudentForm.name,
           targetCareer: '미정',
           targetMajor: '미정',
+          targetField: '인문사회',
           subjects: { sem1: { social: [], science: [] }, sem2: { math: [], social: [], science: [] } },
           roadmapDetails: {},
           internalGrades: {
@@ -370,8 +448,11 @@
           logs: []
         };
 
-        setStudents(prev => ({ ...prev, [newStudentForm.id]: newStudent }));
-        setPasswords(prev => ({ ...prev, [newStudentForm.id]: '0000' }));
+        await db.collection('students').doc(newStudentForm.id).set(newStudent);
+        await db.collection('settings').doc('passwords').update({
+          [newStudentForm.id]: '0000'
+        });
+
         setNewStudentForm({ id: '', name: '' });
         setNewStudentModal(false);
       };
@@ -380,11 +461,15 @@
         return Object.values(students).filter(s => {
           const matchesSearch = s.name.includes(searchQuery) || 
                                 s.targetCareer.includes(searchQuery) || 
-                                s.targetMajor.includes(searchQuery);
+                                (s.targetMajor && s.targetMajor.includes(searchQuery));
           if (filterCategory === '전체') return matchesSearch;
           return matchesSearch && s.logs.some(log => log.category === filterCategory);
         });
       }, [students, searchQuery, filterCategory]);
+
+      if (loading) {
+        return <div className="min-h-screen flex items-center justify-center font-bold text-[#5c6d54]">데이터를 불러오는 중입니다...</div>;
+      }
 
       if (!currentUser) {
         return (
@@ -510,7 +595,7 @@
                   <div className="bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm">
                     <div className="text-[11px] font-extrabold text-[#8c9e83] mb-1">누적 진로 상담</div>
                     <div className="text-lg font-extrabold text-[#486382]">
-                      {Object.values(students).reduce((acc, s) => acc + s.logs.length, 0)}건
+                      {Object.values(students).reduce((acc, s) => acc + (s.logs?.length || 0), 0)}건
                     </div>
                     <div className="text-xs font-bold text-[#57799e] mt-1 bg-[#ebf2f8] px-2 py-0.5 rounded-full inline-block">전체 상담기록</div>
                   </div>
@@ -523,7 +608,7 @@
                   </div>
                 </div>
 
-                {/* 1. 교사 예정된 상담 내역 및 승인 대기 한눈에 보기 */}
+                {/* 예정된 상담 내역 및 승인 대기 한눈에 보기 */}
                 <div className="bg-[#fffdf7] border-2 border-[#e3eed4] rounded-3xl p-5 shadow-sm space-y-4">
                   <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2 border-b pb-3 border-[#e8edd8]">
                     <Icon name="calendar" size={18} className="text-[#7ba05b]" /> 예정된 상담 일정 및 대기 신청 내역
@@ -560,7 +645,7 @@
                             {app.status === '신청' && (
                               <button
                                 onClick={() => {
-                                  setAppointments(prev => prev.map(a => a.id === app.id ? { ...a, status: '승인' } : a));
+                                  db.collection('appointments').doc(app.id).update({ status: '승인' });
                                 }}
                                 className="px-3 py-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white text-xs font-extrabold rounded-xl transition shadow-sm flex items-center gap-1"
                               >
@@ -570,7 +655,7 @@
                             <button
                               onClick={() => {
                                 if (confirm('상담 일정을 취소/삭제하시겠습니까?')) {
-                                  setAppointments(prev => prev.filter(a => a.id !== app.id));
+                                  db.collection('appointments').doc(app.id).delete();
                                 }
                               }}
                               className="px-2.5 py-1.5 bg-[#fcf0f0] hover:bg-[#f8dada] text-[#d96b63] text-xs font-extrabold rounded-xl border border-[#f0c8c8] transition"
@@ -642,11 +727,12 @@
                           </div>
                           <div className="space-y-1 text-xs mb-3 font-bold">
                             <p className="text-[#596951]"><span className="text-[#8c9e83]">진로:</span> {student.targetCareer}</p>
+                            <p className="text-[#596951]"><span className="text-[#8c9e83]">계열:</span> {student.targetField || '인문사회'}</p>
                             <p className="text-[#596951]"><span className="text-[#8c9e83]">학과:</span> {student.targetMajor}</p>
                           </div>
                         </div>
                         <div className="pt-2.5 border-t-2 border-dashed border-[#eef3e5] flex justify-between items-center text-[11px] font-bold text-[#8c9e83] relative z-10">
-                          <span>상담 기록 {student.logs.length}건</span>
+                          <span>상담 기록 {student.logs?.length || 0}건</span>
                           <span className="text-[#688a4a]">관리하기 &rarr;</span>
                         </div>
                       </div>
@@ -660,8 +746,6 @@
                 student={students[currentUser.id]}
                 isTeacher={false}
                 appointments={appointments}
-                setAppointments={setAppointments}
-                students={students}
               />
             )}
           </main>
@@ -790,7 +874,6 @@
                     student={selectedStudent}
                     isTeacher={true}
                     activeTab={activeTab}
-                    setStudents={setStudents}
                   />
                 </div>
               </div>
@@ -849,25 +932,26 @@
     }
 
     // --- Student Detail View Component ---
-    function StudentDetailView({ student, isTeacher, activeTab: propActiveTab, setStudents, appointments, setAppointments, students }) {
+    function StudentDetailView({ student, isTeacher, activeTab: propActiveTab, appointments }) {
       const [localActiveTab, setLocalActiveTab] = useState('career');
       const currentTab = isTeacher ? propActiveTab : localActiveTab;
 
-      const [careerForm, setCareerForm] = useState(student.targetCareer || '미정');
-      const [majorForm, setMajorForm] = useState(student.targetMajor || '미정');
-      const [subjectsForm, setSubjectsForm] = useState(student.subjects || {
+      const [careerForm, setCareerForm] = useState(student?.targetCareer || '미정');
+      const [majorForm, setMajorForm] = useState(student?.targetMajor || '미정');
+      const [fieldForm, setFieldForm] = useState(student?.targetField || '인문사회');
+      const [subjectsForm, setSubjectsForm] = useState(student?.subjects || {
         sem1: { social: [], science: [] },
         sem2: { math: [], social: [], science: [] }
       });
 
-      const [roadmapDetailsForm, setRoadmapDetailsForm] = useState(student.roadmapDetails || {});
+      const [roadmapDetailsForm, setRoadmapDetailsForm] = useState(student?.roadmapDetails || {});
 
-      const [internalGradesForm, setInternalGradesForm] = useState(student.internalGrades || {
+      const [internalGradesForm, setInternalGradesForm] = useState(student?.internalGrades || {
         sem1: { korean: null, math: null, english: null, history: null, social: null, science: null },
         sem2: { korean: null, math: null, english: null, history: null, social: null, science: null }
       });
 
-      const [mockGradesForm, setMockGradesForm] = useState(student.mockGrades || {
+      const [mockGradesForm, setMockGradesForm] = useState(student?.mockGrades || {
         mar: { korean: null, math: null, english: null, history: null, social: null, science: null },
         jun: { korean: null, math: null, english: null, history: null, social: null, science: null },
         sep: { korean: null, math: null, english: null, history: null, social: null, science: null },
@@ -879,7 +963,6 @@
       const internalChartInstance = useRef(null);
       const mockChartInstance = useRef(null);
 
-      // 3. 교사 전용 비공개 '선생님 메모' 상태 추가
       const [newLog, setNewLog] = useState({
         date: new Date().toISOString().split('T')[0],
         category: '성적 향상 및 학습 전략',
@@ -895,34 +978,35 @@
       });
 
       useEffect(() => {
-        setCareerForm(student.targetCareer || '미정');
-        setMajorForm(student.targetMajor || '미정');
-        setSubjectsForm(student.subjects || {
-          sem1: { social: [], science: [] },
-          sem2: { math: [], social: [], science: [] }
-        });
-        setRoadmapDetailsForm(student.roadmapDetails || {});
-        setInternalGradesForm(student.internalGrades || {
-          sem1: { korean: null, math: null, english: null, history: null, social: null, science: null },
-          sem2: { korean: null, math: null, english: null, history: null, social: null, science: null }
-        });
-        setMockGradesForm(student.mockGrades || {
-          mar: { korean: null, math: null, english: null, history: null, social: null, science: null },
-          jun: { korean: null, math: null, english: null, history: null, social: null, science: null },
-          sep: { korean: null, math: null, english: null, history: null, social: null, science: null },
-          oct: { korean: null, math: null, english: null, history: null, social: null, science: null }
-        });
+        if (student) {
+          setCareerForm(student.targetCareer || '미정');
+          setMajorForm(student.targetMajor || '미정');
+          setFieldForm(student.targetField || '인문사회');
+          setSubjectsForm(student.subjects || {
+            sem1: { social: [], science: [] },
+            sem2: { math: [], social: [], science: [] }
+          });
+          setRoadmapDetailsForm(student.roadmapDetails || {});
+          setInternalGradesForm(student.internalGrades || {
+            sem1: { korean: null, math: null, english: null, history: null, social: null, science: null },
+            sem2: { korean: null, math: null, english: null, history: null, social: null, science: null }
+          });
+          setMockGradesForm(student.mockGrades || {
+            mar: { korean: null, math: null, english: null, history: null, social: null, science: null },
+            jun: { korean: null, math: null, english: null, history: null, social: null, science: null },
+            sep: { korean: null, math: null, english: null, history: null, social: null, science: null },
+            oct: { korean: null, math: null, english: null, history: null, social: null, science: null }
+          });
+        }
       }, [student]);
 
-      // 2. AI 분석 - 경기진협 환산배치표 기준 적용
       const susiAiResult = useMemo(() => getSusiRecommendation(internalGradesForm), [internalGradesForm]);
       const jeongsiAiResult = useMemo(() => getJeongsiRecommendation(mockGradesForm), [mockGradesForm]);
-      const roadmapAiResult = useMemo(() => getRoadmapAnalysis(careerForm, majorForm, subjectsForm, roadmapDetailsForm), [careerForm, majorForm, subjectsForm, roadmapDetailsForm]);
+      const roadmapAiResult = useMemo(() => getRoadmapAnalysis(careerForm, majorForm, fieldForm, subjectsForm, roadmapDetailsForm), [careerForm, majorForm, fieldForm, subjectsForm, roadmapDetailsForm]);
 
       // --- Chart Rendering Effect ---
       useEffect(() => {
         if (currentTab === 'grades') {
-          // Render Internal Grades Chart (5등급제 전체 시각화)
           if (internalChartRef.current) {
             if (internalChartInstance.current) internalChartInstance.current.destroy();
             const ctx = internalChartRef.current.getContext('2d');
@@ -965,7 +1049,6 @@
             });
           }
 
-          // Render Mock Exam Grades Chart (3, 6, 9, 10월 전체)
           if (mockChartRef.current) {
             if (mockChartInstance.current) mockChartInstance.current.destroy();
             const ctx = mockChartRef.current.getContext('2d');
@@ -1029,40 +1112,31 @@
         });
       };
 
-      const saveCareerData = () => {
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: {
-            ...prev[student.id],
-            targetCareer: careerForm,
-            targetMajor: majorForm,
-            subjects: subjectsForm,
-            roadmapDetails: roadmapDetailsForm
-          }
-        }));
-        alert('진로, 선택과목 및 로드맵 세부사항이 저장되었습니다.');
+      const saveCareerData = async () => {
+        await db.collection('students').doc(student.id).update({
+          targetCareer: careerForm,
+          targetMajor: majorForm,
+          targetField: fieldForm,
+          subjects: subjectsForm,
+          roadmapDetails: roadmapDetailsForm
+        });
+        alert('진로, 선택과목 및 로드맵 세부사항이 Firestore에 저장되었습니다.');
       };
 
-      const saveGradesData = () => {
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: {
-            ...prev[student.id],
-            internalGrades: internalGradesForm,
-            mockGrades: mockGradesForm
-          }
-        }));
-        alert('내신 및 학력평가 성적 기록이 성공적으로 저장되었습니다.');
+      const saveGradesData = async () => {
+        await db.collection('students').doc(student.id).update({
+          internalGrades: internalGradesForm,
+          mockGrades: mockGradesForm
+        });
+        alert('내신 및 학력평가 성적 기록이 Firestore에 저장되었습니다.');
       };
 
-      const handleAddLog = (e) => {
+      const handleAddLog = async (e) => {
         e.preventDefault();
         if (!newLog.content) return;
-        const updatedLogs = [...student.logs, { id: Date.now(), ...newLog }];
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: { ...prev[student.id], logs: updatedLogs }
-        }));
+        const updatedLogs = [...(student.logs || []), { id: Date.now(), ...newLog }];
+        await db.collection('students').doc(student.id).update({ logs: updatedLogs });
+
         setNewLog({
           date: new Date().toISOString().split('T')[0],
           category: '성적 향상 및 학습 전략',
@@ -1072,18 +1146,15 @@
         });
       };
 
-      const handleDeleteLog = (logId) => {
+      const handleDeleteLog = async (logId) => {
         if (!confirm('이 상담 기록을 삭제하시겠습니까?')) return;
         const updatedLogs = student.logs.filter(l => l.id !== logId);
-        setStudents(prev => ({
-          ...prev,
-          [student.id]: { ...prev[student.id], logs: updatedLogs }
-        }));
+        await db.collection('students').doc(student.id).update({ logs: updatedLogs });
       };
 
-      const handleCancelAppointment = (appId) => {
+      const handleCancelAppointment = async (appId) => {
         if (!confirm('신청하신 상담을 취소하시겠습니까?')) return;
-        setAppointments(prev => prev.filter(a => a.id !== appId));
+        await db.collection('appointments').doc(appId).delete();
       };
 
       const bookingSlotsCount = useMemo(() => {
@@ -1091,7 +1162,7 @@
         return appointments.filter(a => a.date === bookingForm.date && a.status !== '거절').length;
       }, [bookingForm.date, appointments]);
 
-      const handleBookingSubmit = (e) => {
+      const handleBookingSubmit = async (e) => {
         e.preventDefault();
         if (!bookingForm.date || !bookingForm.reason) {
           alert('날짜와 상담 사유를 입력해 주세요.');
@@ -1110,7 +1181,6 @@
         }
 
         const newApp = {
-          id: Date.now(),
           studentId: student.id,
           name: student.name,
           date: bookingForm.date,
@@ -1119,10 +1189,12 @@
           status: '신청'
         };
 
-        setAppointments(prev => [...prev, newApp]);
+        await db.collection('appointments').add(newApp);
         alert('상담 신청이 완료되었습니다.');
         setBookingForm({ date: '', category: '성적 향상 및 학습 전략', reason: '' });
       };
+
+      if (!student) return null;
 
       return (
         <div>
@@ -1160,30 +1232,45 @@
             </div>
           )}
 
-          {/* TAB 1: CAREER & MULTI-SELECT SUBJECTS & DETAILED ROADMAP */}
+          {/* TAB 1: CAREER */}
           {currentTab === 'career' && (
             <div className="space-y-6">
               <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
                 <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
-                  <Icon name="target" size={16} className="text-[#7ba05b]" /> 희망 진로 및 계열
+                  <Icon name="target" size={16} className="text-[#7ba05b]" /> 희망 진로, 계열 및 학과
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[#8c9e83] mb-1 ml-1">희망 진로</label>
                     <input
                       type="text"
                       disabled={!isTeacher}
                       className="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
+                      placeholder="예: 소프트웨어 개발자"
                       value={careerForm}
                       onChange={(e) => setCareerForm(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#8c9e83] mb-1 ml-1">희망 학과 / 계열</label>
+                    <label className="block text-xs font-bold text-[#8c9e83] mb-1 ml-1">희망 계열</label>
+                    <select
+                      disabled={!isTeacher}
+                      className="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
+                      value={fieldForm}
+                      onChange={(e) => setFieldForm(e.target.value)}
+                    >
+                      <option value="인문사회">인문사회</option>
+                      <option value="자연이공">자연이공</option>
+                      <option value="예체능">예체능</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[#8c9e83] mb-1 ml-1">희망 학과</label>
                     <input
                       type="text"
                       disabled={!isTeacher}
                       className="w-full px-3.5 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold text-[#3b4737] disabled:opacity-90 focus:outline-none focus:border-[#7ba05b]"
+                      placeholder="예: 컴퓨터공학과"
                       value={majorForm}
                       onChange={(e) => setMajorForm(e.target.value)}
                     />
@@ -1200,7 +1287,6 @@
                   <span className="text-[11px] font-bold text-[#7ba05b] bg-[#f0f5e8] px-2.5 py-1 rounded-full">개별 중복 체크</span>
                 </div>
 
-                {/* Sem 1 Multi-select */}
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] space-y-3">
                   <span className="text-xs font-extrabold text-[#5c7a43] flex items-center gap-1">
                     🍃 [1학기 선택 과목]
@@ -1210,7 +1296,7 @@
                       <span className="font-bold text-[#8c9e83] block mb-1.5">사회 탐구 영역</span>
                       <div className="flex flex-wrap gap-1.5">
                         {SUBJECT_OPTIONS.sem1.social.map(subj => {
-                          const isSelected = (subjectsForm.sem1.social || []).includes(subj);
+                          const isSelected = (subjectsForm.sem1?.social || []).includes(subj);
                           return (
                             <button
                               key={subj}
@@ -1230,7 +1316,7 @@
                       <span className="font-bold text-[#8c9e83] block mb-1.5">과학 탐구 영역</span>
                       <div className="flex flex-wrap gap-1.5">
                         {SUBJECT_OPTIONS.sem1.science.map(subj => {
-                          const isSelected = (subjectsForm.sem1.science || []).includes(subj);
+                          const isSelected = (subjectsForm.sem1?.science || []).includes(subj);
                           return (
                             <button
                               key={subj}
@@ -1249,7 +1335,6 @@
                   </div>
                 </div>
 
-                {/* Sem 2 Multi-select */}
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] space-y-3">
                   <span className="text-xs font-extrabold text-[#486382] flex items-center gap-1">
                     💧 [2학기 선택 과목]
@@ -1259,7 +1344,7 @@
                       <span className="font-bold text-[#8c9e83] block mb-1.5">수학 영역</span>
                       <div className="flex flex-wrap gap-1.5">
                         {SUBJECT_OPTIONS.sem2.math.map(subj => {
-                          const isSelected = (subjectsForm.sem2.math || []).includes(subj);
+                          const isSelected = (subjectsForm.sem2?.math || []).includes(subj);
                           return (
                             <button
                               key={subj}
@@ -1279,7 +1364,7 @@
                       <span className="font-bold text-[#8c9e83] block mb-1.5">사회 탐구 영역</span>
                       <div className="flex flex-wrap gap-1.5">
                         {SUBJECT_OPTIONS.sem2.social.map(subj => {
-                          const isSelected = (subjectsForm.sem2.social || []).includes(subj);
+                          const isSelected = (subjectsForm.sem2?.social || []).includes(subj);
                           return (
                             <button
                               key={subj}
@@ -1299,7 +1384,7 @@
                       <span className="font-bold text-[#8c9e83] block mb-1.5">과학 탐구 영역</span>
                       <div className="flex flex-wrap gap-1.5">
                         {SUBJECT_OPTIONS.sem2.science.map(subj => {
-                          const isSelected = (subjectsForm.sem2.science || []).includes(subj);
+                          const isSelected = (subjectsForm.sem2?.science || []).includes(subj);
                           return (
                             <button
                               key={subj}
@@ -1356,7 +1441,7 @@
                 </div>
               </div>
 
-              {/* AI Analysis Panel for Career & Roadmap */}
+              {/* AI Analysis Panel */}
               <div className="bg-[#f0f7ea] p-5 rounded-3xl border-2 border-[#c2e0aa] space-y-3 shadow-sm">
                 <h3 className="font-extrabold text-[#3a5e23] text-sm flex items-center gap-2">
                   <Icon name="sparkles" size={18} className="text-[#5c8a38]" /> AI 진로 및 로드맵 진단 결과
@@ -1401,10 +1486,9 @@
             </div>
           )}
 
-          {/* TAB 2: GRADES WITH CHARTS (5등급제 환산 및 전 성적 입력 가능) */}
+          {/* TAB 2: GRADES */}
           {currentTab === 'grades' && (
             <div className="space-y-6">
-              {/* 5. 내신 성적 관리 - 1,2학기 전 항목 입력 가능 */}
               <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
@@ -1419,8 +1503,8 @@
                   {['국어', '수학', '영어', '한국사', '사회', '과학'].map((subj, idx) => {
                     const keys = ['korean', 'math', 'english', 'history', 'social', 'science'];
                     const key = keys[idx];
-                    const g1 = internalGradesForm.sem1[key];
-                    const g2 = internalGradesForm.sem2[key];
+                    const g1 = internalGradesForm.sem1?.[key];
+                    const g2 = internalGradesForm.sem2?.[key];
                     return (
                       <div key={subj} className="bg-[#f8faf2] p-3 rounded-2xl border-2 border-[#e3eed4]">
                         <div className="font-extrabold text-[#4a5843] mb-2">{subj}</div>
@@ -1461,21 +1545,19 @@
                   })}
                 </div>
 
-                {/* 2. AI 수시전형 경기진협 5등급제 환산 기준 대학 추천 결과 */}
                 <div className="bg-[#f2f7ec] p-4 rounded-2xl border-2 border-[#d0e3be] space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <h4 className="text-xs font-extrabold text-[#436e29] flex items-center gap-1.5">
-                      <Icon name="award" size={16} className="text-[#5b8c3b]" /> 경기진협 5등급제 환산 기준 AI 수시전형 적정 대학 추천
+                      <Icon name="award" size={16} className="text-[#5b8c3b]" /> 정밀 정규분포(z-score) 9등급 환산 AI 수시 적정 대학 추천
                     </h4>
                     <span className="text-[11px] font-extrabold text-[#3a5e23] bg-[#e1ebd2] px-2 py-0.5 rounded-full">
                       {susiAiResult.range}
                     </span>
                   </div>
                   <p className="text-xs font-extrabold text-[#314a20]">🎯 추천 적정 대학 및 학과: <span className="text-[#517a35]">{susiAiResult.univs}</span></p>
-                  <p className="text-[11px] font-bold text-[#627a51]">💡 경기진협 입시 가이드: {susiAiResult.tip}</p>
+                  <p className="text-[11px] font-bold text-[#627a51]">💡 입시 맞춤 가이드: {susiAiResult.tip}</p>
                 </div>
 
-                {/* Internal Grades Chart */}
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] h-64 relative">
                   <h4 className="text-xs font-extrabold text-[#5c7a43] mb-2 flex items-center gap-1">
                     📈 내신 평균 등급 추이 그래프 (1~5등급)
@@ -1486,7 +1568,6 @@
                 </div>
               </div>
 
-              {/* 5. 학력평가 성적 관리 - 3, 6, 9, 10월 전 항목 입력 가능 */}
               <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
@@ -1511,13 +1592,13 @@
                       <div className="grid grid-cols-2 gap-1.5">
                         {[
                           { label: '국어', field: 'korean' },
-                          { label: '수학', field: 'field' ? 'math' : 'math' },
+                          { label: '수학', field: 'math' },
                           { label: '영어', field: 'english' },
                           { label: '한국사', field: 'history' },
                           { label: '사회', field: 'social' },
                           { label: '과학', field: 'science' }
                         ].map(s => {
-                          const val = mockGradesForm[m.key][s.field];
+                          const val = mockGradesForm[m.key]?.[s.field];
                           return (
                             <div key={s.field} className="flex justify-between items-center bg-[#fffdf7] px-2 py-1 rounded-lg border border-[#dde5d0]">
                               <span className="text-[10px] font-bold text-[#8c9e83]">{s.label}</span>
@@ -1543,7 +1624,6 @@
                   ))}
                 </div>
 
-                {/* AI 정시전형 대학 추천 결과 */}
                 <div className="bg-[#ebf4f5] p-4 rounded-2xl border-2 border-[#bcdbdf] space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <h4 className="text-xs font-extrabold text-[#2b5961] flex items-center gap-1.5">
@@ -1555,7 +1635,6 @@
                   <p className="text-[11px] font-bold text-[#457279]">💡 수능 대비 전략: {jeongsiAiResult.tip}</p>
                 </div>
 
-                {/* Mock Exam Grades Chart */}
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] h-64 relative">
                   <h4 className="text-xs font-extrabold text-[#3a6351] mb-2 flex items-center gap-1">
                     📈 학력평가 평균 등급 변화 추이 그래프
@@ -1577,12 +1656,11 @@
             </div>
           )}
 
-          {/* TAB 3: COUNSELING LOG & BOOKING */}
+          {/* TAB 3: COUNSELING */}
           {currentTab === 'counseling' && (
             <div className="space-y-6">
               {isTeacher ? (
                 <div className="space-y-6">
-                  {/* 3. 교사 상담 등록 폼 - 선생님 메모(비공개) 포함 */}
                   <form onSubmit={handleAddLog} className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
                     <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                       <Icon name="edit-3" size={16} className="text-[#7ba05b]" /> 신규 상담 기록 작성
@@ -1630,7 +1708,6 @@
                         onChange={(e) => setNewLog({ ...newLog, plan: e.target.value })}
                       ></textarea>
                     </div>
-                    {/* 3. 선생님 전용 메모 (비공개) */}
                     <div className="bg-[#fff5f5] p-3 rounded-2xl border border-[#f0c8c8]">
                       <label className="block text-xs font-extrabold text-[#c54b4b] mb-1 flex items-center gap-1">
                         <Icon name="lock" size={13} /> 선생님 메모 (🔒 교사 전용 - 학생 열람 불가)
@@ -1651,11 +1728,10 @@
                     </button>
                   </form>
 
-                  {/* Teacher's view of logs with Private Note */}
                   <div className="space-y-3">
-                    <h3 className="font-extrabold text-[#4a5843] text-sm">상담 히스토리 ({student.logs.length}건)</h3>
+                    <h3 className="font-extrabold text-[#4a5843] text-sm">상담 히스토리 ({student.logs?.length || 0}건)</h3>
                     <div className="relative pl-5 border-l-4 border-dashed border-[#c2d6b2] space-y-4">
-                      {student.logs.slice().reverse().map(log => (
+                      {(student.logs || []).slice().reverse().map(log => (
                         <div key={log.id} className="relative bg-[#fffdf7] p-4 rounded-3xl border-2 border-[#e3eed4] shadow-sm space-y-2">
                           <div className="absolute -left-[27px] top-4 w-4 h-4 bg-[#7ba05b] rounded-full border-2 border-white"></div>
                           <div className="flex justify-between items-center">
@@ -1676,7 +1752,6 @@
                               <span className="font-extrabold text-[#4a5843]">💬 선생님 조언: </span>{log.plan}
                             </div>
                           )}
-                          {/* 교사 전용 비공개 메모 노출 */}
                           {log.privateNote && (
                             <div className="p-2.5 bg-[#fff0f0] rounded-xl text-[11px] font-bold text-[#a83b3b] border border-[#f5c6c6] flex items-start gap-1">
                               <Icon name="lock" size={14} className="mt-0.5 shrink-0" />
@@ -1689,13 +1764,13 @@
                   </div>
                 </div>
               ) : (
-                /* STUDENT VIEW (선생님 비공개 메모 미노출) */
+                /* STUDENT VIEW */
                 <div className="space-y-6">
                   <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3 shadow-sm">
                     <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                       <Icon name="message-circle" size={16} className="text-[#7ba05b]" /> 담임선생님의 상담 기록 및 조언 열람
                     </h3>
-                    {student.logs.length === 0 ? (
+                    {(!student.logs || student.logs.length === 0) ? (
                       <p className="text-xs font-bold text-[#8c9e83]">아직 등록된 상담 기록이 없습니다.</p>
                     ) : (
                       <div className="space-y-3">
@@ -1714,14 +1789,12 @@
                                 <div>{log.plan}</div>
                               </div>
                             )}
-                            {/* 비공개 메모는 학생 화면에 노출되지 않음 */}
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Student Appointment Form */}
                   <form onSubmit={handleBookingSubmit} className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] shadow-sm space-y-4">
                     <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                       <Icon name="calendar" size={16} className="text-[#7ba05b]" /> 담임선생님 1:1 상담 신청
@@ -1791,7 +1864,6 @@
                     </button>
                   </form>
 
-                  {/* Student Appointment List */}
                   <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
                     <h4 className="font-extrabold text-[#4a5843] text-xs">나의 상담 신청 현황</h4>
                     <div className="space-y-2">
