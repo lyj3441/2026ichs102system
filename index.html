@@ -145,89 +145,46 @@
       return acc;
     }, {});
 
-// 5등급제 평균 성적(1.0~5.0)을 9등급제로 직접 변환하는 통합 함수
-function convert5To9Grade(avg5Input) {
-  const avg5 = parseFloat(avg5Input);
-  if (isNaN(avg5) || avg5 <= 0) return "미산출";
+    // 5등급제 평균 성적(1.0~5.0)을 9등급제로 직접 변환하는 통합 함수
+    function convert5To9Grade(avg5Input) {
+      const avg5 = parseFloat(avg5Input);
+      if (isNaN(avg5) || avg5 <= 0) return "미산출";
 
-  // 1. 5등급제 성적을 9등급제 누적 백분위(p, %)로 변환
-  let p = 50.0;
-  if (avg5 <= 1.0) {
-    p = 2.0; // 1.0등급 -> 상위 2% (9등급제 약 1.39등급)
-  } else if (avg5 <= 2.0) {
-    p = 2.0 + (avg5 - 1.0) * 8.0; // 1.0~2.0등급 -> 상위 2%~10%
-  } else if (avg5 <= 3.0) {
-    p = 10.0 + (avg5 - 2.0) * 24.0; // 2.0~3.0등급 -> 상위 10%~34%
-  } else if (avg5 <= 4.0) {
-    p = 34.0 + (avg5 - 3.0) * 32.0; // 3.0~4.0등급 -> 상위 34%~66%
-  } else {
-    p = 66.0 + (avg5 - 4.0) * 24.0; // 4.0~5.0등급 -> 상위 66%~90%
-  }
+      let p = 50.0;
+      if (avg5 <= 1.0) {
+        p = 2.0;
+      } else if (avg5 <= 2.0) {
+        p = 2.0 + (avg5 - 1.0) * 8.0;
+      } else if (avg5 <= 3.0) {
+        p = 10.0 + (avg5 - 2.0) * 24.0;
+      } else if (avg5 <= 4.0) {
+        p = 34.0 + (avg5 - 3.0) * 32.0;
+      } else {
+        p = 66.0 + (avg5 - 4.0) * 24.0;
+      }
 
-  // 2. 정규분포 역함수를 통한 9등급 환산
-  const prob = p / 100;
-  function normSInv(pVal) {
-    if (pVal >= 1) return 8;
-    if (pVal <= 0) return -8;
-    let q;
-    if (pVal < 0.5) {
-      q = Math.sqrt(-2 * Math.log(pVal));
-      return -(((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
-    } else {
-      q = Math.sqrt(-2 * Math.log(1 - pVal));
-      return (((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
+      const prob = p / 100;
+      function normSInv(pVal) {
+        if (pVal >= 1) return 8;
+        if (pVal <= 0) return -8;
+        let q;
+        if (pVal < 0.5) {
+          q = Math.sqrt(-2 * Math.log(pVal));
+          return -(((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
+        } else {
+          q = Math.sqrt(-2 * Math.log(1 - pVal));
+          return (((0.010328 * q + 0.802853) * q + 2.515517) / (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
+        }
+      }
+
+      const z = normSInv(prob);
+      const converted = 5 + (1.75 * z);
+      const finalGrade = Math.max(1.00, Math.min(9.00, converted));
+
+      return finalGrade.toFixed(2);
     }
-  }
 
-  const z = normSInv(prob);
-  const converted = 5 + (1.75 * z); // 상위 백분위일수록 1등급에 가깝게 변환
-  const finalGrade = Math.max(1.00, Math.min(9.00, converted));
-
-  return finalGrade.toFixed(2);
-}
-
-// AI 수시 추천 함수 (수정 적용)
-const getSusiRecommendation = (internalGrades) => {
-  const allVals = [
-    ...Object.values(internalGrades.sem1 || {}),
-    ...Object.values(internalGrades.sem2 || {})
-  ].filter(v => v !== null && v !== '' && !isNaN(v));
-
-  if (allVals.length === 0) {
-    return { avg5: '미입력', converted9: '미산출', range: '성적 입력 필요', univs: '내신 성적을 입력해 주세요.', tip: '성적을 입력하면 적정 대학을 추천해 드립니다.' };
-  }
-
-  const avg5 = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
-  
-  // 🔥 [수정 포인트] 새로 만든 통합 환산 함수 직접 호출
-  const converted9Val = parseFloat(convert5To9Grade(avg5));
-
-  let range = '', univs = '', tip = '';
-  if (converted9Val <= 1.5) {
-    range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 최상위권)`;
-    univs = '서울대, 연세대, 고려대, 카이스트, 포스텍, 의치한약수';
-    tip = '학생부 종합전형 세특의 학업 역량 및 깊이 있는 탐구 활동 증명이 핵심입니다.';
-  } else if (converted9Val <= 2.3) {
-    range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 상위권)`;
-    univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 시립대';
-    tip = '수능 최저학력기준 충족 여부 점검과 전공 연계성을 확보하세요.';
-  } else if (converted9Val <= 3.5) {
-    range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중상위권)`;
-    univs = '건국대, 동국대, 홍익대, 국민대, 숭실대, 세종대, 인하대, 아주대';
-    tip = '주요 교과 성적 유지 및 학종 세특의 구체성을 확보하세요.';
-  } else if (converted9Val <= 5.0) {
-    range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중위권)`;
-    univs = '단국대, 광운대, 명지대, 상명대, 가천대, 인천대, 경기대';
-    tip = '교과 세특의 성실성 어필 및 적정 대학 수시 전형을 분석하세요.';
-  } else {
-    range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 일반권)`;
-    univs = '수도권 주요 대학 및 지방 거점 국립대, 약술형 논술전형 고려';
-    tip = '취약 과목 보완 및 맞춤형 입시 전략을 수립하세요.';
-  }
-  return { avg5: avg5.toFixed(2), converted9: converted9Val.toFixed(2), range, univs, tip };
-};
-
-    // --- AI Recommendations Helper ---
+    // AI 수시 추천 함수
     const getSusiRecommendation = (internalGrades) => {
       const allVals = [
         ...Object.values(internalGrades.sem1 || {}),
@@ -235,45 +192,34 @@ const getSusiRecommendation = (internalGrades) => {
       ].filter(v => v !== null && v !== '' && !isNaN(v));
 
       if (allVals.length === 0) {
-        return { 
-          avg5: '미입력', 
-          converted9: '미산출', 
-          range: '성적 입력 필요', 
-          univs: '내신 성적을 입력해 주세요.', 
-          tip: '1, 2학기 내신 성적을 입력하면 정밀 환산 공식 기준 적정 대학을 추천해 드립니다.' 
-        };
+        return { avg5: '미입력', converted9: '미산출', range: '성적 입력 필요', univs: '내신 성적을 입력해 주세요.', tip: '성적을 입력하면 적정 대학을 추천해 드립니다.' };
       }
 
       const avg5 = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
-      const cumRatio = getCumulativeRatioFrom5Grade(avg5);
-      const converted9Val = parseFloat(convertTo9Grade(cumRatio));
+      const converted9Val = parseFloat(convert5To9Grade(avg5));
 
-      let range = '';
-      let univs = '';
-      let tip = '';
-
+      let range = '', univs = '', tip = '';
       if (converted9Val <= 1.5) {
         range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 최상위권)`;
-        univs = '서울대, 연세대, 고려대, 카이스트, 포스텍, 의치한약수 주요학과';
+        univs = '서울대, 연세대, 고려대, 카이스트, 포스텍, 의치한약수';
         tip = '학생부 종합전형 세특의 학업 역량 및 깊이 있는 탐구 활동 증명이 핵심입니다.';
       } else if (converted9Val <= 2.3) {
         range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 상위권)`;
-        univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 시립대 상위권 학과';
-        tip = '수능 최저학력기준 충족 여부 점검과 전공 관련 과목 선택의 개연성을 확보하세요.';
+        univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 시립대';
+        tip = '수능 최저학력기준 충족 여부 점검과 전공 연계성을 확보하세요.';
       } else if (converted9Val <= 3.5) {
         range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중상위권)`;
         univs = '건국대, 동국대, 홍익대, 국민대, 숭실대, 세종대, 인하대, 아주대';
-        tip = '주요 교과 내신 성적 유지 및 학종 세특 내 진로 연계활동의 구체성이 중요합니다.';
+        tip = '주요 교과 성적 유지 및 학종 세특의 구체성을 확보하세요.';
       } else if (converted9Val <= 5.0) {
         range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중위권)`;
-        univs = '단국대, 광운대, 명지대, 상명대, 가천대, 인천대, 경기대, 가톨릭대';
-        tip = '교과 전형 수능 최저 준비와 함께 교과 세특 내 성실성을 적극 어필하세요.';
+        univs = '단국대, 광운대, 명지대, 상명대, 가천대, 인천대, 경기대';
+        tip = '교과 세특의 성실성 어필 및 적정 대학 수시 전형을 분석하세요.';
       } else {
         range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 일반권)`;
-        univs = '수도권 주요 대학 및 지방 거점 국립대, 면접/약술형 논술 전형 병행 고려';
-        tip = '취약 과목 성적 보완과 함께 맞춤형 교과/면접 전형 입시 전략 수립이 요구됩니다.';
+        univs = '수도권 주요 대학 및 지방 거점 국립대, 약술형 논술전형 고려';
+        tip = '취약 과목 보완 및 맞춤형 입시 전략을 수립하세요.';
       }
-
       return { avg5: avg5.toFixed(2), converted9: converted9Val.toFixed(2), range, univs, tip };
     };
 
@@ -551,7 +497,7 @@ const getSusiRecommendation = (internalGrades) => {
                   <input
                     type="password"
                     required
-                    maxLength="4"
+                    maxLength={4}
                     className="w-full px-4 py-3 rounded-2xl bg-[#f7f9f1] border-2 border-[#dbe4cd] text-[#3b4737] font-bold placeholder-[#a3b39a] focus:outline-none focus:border-[#7ba05b] transition"
                     placeholder="숫자 4자리 비밀번호"
                     value={pwInput}
@@ -808,7 +754,7 @@ const getSusiRecommendation = (internalGrades) => {
                     <input
                       type="password"
                       required
-                      maxLength="4"
+                      maxLength={4}
                       className="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
                       placeholder="현재 비밀번호 (초기: 0000)"
                       value={changePwForm.current}
@@ -820,7 +766,7 @@ const getSusiRecommendation = (internalGrades) => {
                     <input
                       type="password"
                       required
-                      maxLength="4"
+                      maxLength={4}
                       className="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
                       placeholder="숫자 4자리 입력"
                       value={changePwForm.newPw}
@@ -832,7 +778,7 @@ const getSusiRecommendation = (internalGrades) => {
                     <input
                       type="password"
                       required
-                      maxLength="4"
+                      maxLength={4}
                       className="w-full px-3 py-2.5 bg-[#f6f8f0] border-2 border-[#dde5d0] rounded-2xl text-xs font-bold focus:outline-none focus:border-[#7ba05b]"
                       placeholder="새 비밀번호 재입력"
                       value={changePwForm.confirmPw}
