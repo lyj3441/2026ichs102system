@@ -154,32 +154,32 @@
       return 90.0 + (avg5 - 4.0) * 8.0;                 // 90% ~ 98%
     };
 
-    // 누적비(P, %)를 입력받아 환산 9등급을 반환하는 함수[cite: 4]
+    // 누적비(P, %)를 입력받아 환산 9등급을 반환하는 함수
     function convertTo9Grade(p) {
-      if (p <= 0 || p >= 100) return "유효한 누적비를 입력하세요 (0 초과 100 미만)";[cite: 4]
+      if (p <= 0 || p >= 100) return "유효한 누적비를 입력하세요 (0 초과 100 미만)";
       
-      const prob = p / 100;[cite: 4]
+      const prob = p / 100;
       
       function normSInv(p) {
-        if (p >= 1) return 8;[cite: 4]
-        if (p <= 0) return -8;[cite: 4]
+        if (p >= 1) return 8;
+        if (p <= 0) return -8;
         
-        let q, r;[cite: 4]
-        if (p < 0.5) {[cite: 4]
-          q = Math.sqrt(-2 * Math.log(p));[cite: 4]
+        let q, r;
+        if (p < 0.5) {
+          q = Math.sqrt(-2 * Math.log(p));
           return -(((0.010328 * q + 0.802853) * q + 2.515517) / 
-                   (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));[cite: 4]
+                   (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
         } else {
-          q = Math.sqrt(-2 * Math.log(1 - p));[cite: 4]
+          q = Math.sqrt(-2 * Math.log(1 - p));
           return (((0.010328 * q + 0.802853) * q + 2.515517) / 
-                  (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));[cite: 4]
+                  (((0.001308 * q + 0.189269) * q + 1.432788) * q + 1));
         }
       }
 
-      const z = normSInv(prob);[cite: 4]
-      const grade = 5 - (1.75 * z);[cite: 4]
+      const z = normSInv(prob);
+      const grade = 5 - (1.75 * z);
 
-      return grade.toFixed(2);[cite: 4]
+      return grade.toFixed(2);
     }
 
     // --- AI Recommendations Helper ---
