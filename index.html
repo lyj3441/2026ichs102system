@@ -15,11 +15,9 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <!-- Firebase CDN (Compat Mode) -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
   <style>
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/NanumSquareRound.woff');
     
@@ -30,7 +28,6 @@
       background-size: 24px 24px;
       color: #3b4737;
     }
-
     ::-webkit-scrollbar {
       width: 10px;
     }
@@ -50,10 +47,8 @@
 </head>
 <body class="bg-[#f6f8f0] text-[#3b4737]">
   <div id="root"></div>
-
   <script type="text/babel">
     const { useState, useEffect, useMemo, useRef } = React;
-
     // 🔥 Firebase 설정 및 초기화
     const firebaseConfig = {
       apiKey: "AIzaSyDmQQn4zIO_abgTFXjuZ0qcYlr3e27g5_A",
@@ -65,7 +60,6 @@
       appId: "1:309285659928:web:ca30c4d4be8ac922bb6a6d",
       measurementId: "G-NHG2XC3NGV"
     };
-
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
@@ -92,7 +86,6 @@
       { id: '10219', name: '안현서' }, { id: '10220', name: '오주호' }, { id: '10221', name: '이현서' },
       { id: '10222', name: '이현준' }, { id: '10223', name: '임서후' }, { id: '10224', name: '한예준' }
     ];
-
     const INITIAL_PASSWORDS = {
       '10200': '0000',
       ...MOCK_STUDENTS_LIST.reduce((acc, student) => {
@@ -100,12 +93,10 @@
         return acc;
       }, {})
     };
-
     const ROADMAP_ITEMS = [
       '학급자치회', '꿈두레 교육과정', '동아리 활동', '프로젝트 봉사활동', 
       '수요칼리지', '글로벌 칼리지', '학술제', '꿈이음대학', '기타 자율진로활동'
     ];
-
     const SUBJECT_OPTIONS = {
       sem1: {
         social: ['세계시민과 지리', '세계사', '정치', '경제', '윤리와 사상'],
@@ -117,7 +108,6 @@
         science: ['역학과 에너지', '물질과 에너지', '세포와 물질대사', '지구시스템과학', '과학융합탐구']
       }
     };
-
     const INITIAL_STUDENT_DATA = MOCK_STUDENTS_LIST.reduce((acc, student) => {
       acc[student.id] = {
         id: student.id,
@@ -145,38 +135,58 @@
       return acc;
     }, {});
 
-    // 5등급제 평균 성적(1.0~5.0)을 9등급제로 직접 변환하는 통합 함수
-function convert5To9Grade(avg5Input) {
-  const avg5 = parseFloat(avg5Input);
-  if (isNaN(avg5) || avg5 <= 0) return "미산출";
+    // 💡 경기진협 분석자료 기반 5등급제 -> 9등급제 환산 함수
+    function convert5To9Grade(avg5Input) {
+      const avg5 = parseFloat(avg5Input);
+      if (isNaN(avg5) || avg5 < 1.0 || avg5 > 5.0) return "미산출";
 
-  // 1.0 이하 최상위 등급인 경우 즉시 1.00 반환 (예외 처리)
-  if (avg5 <= 1.0) {
-    return "1.00";
-  }
+      // 경기진협 분석자료 기반 기준 데이터 매핑 (5등급제 평균 -> 환산 9등급)
+      const lookupTable = [
+        { grade5: 1.000, grade9: 1.55 },
+        { grade5: 1.167, grade9: 1.84 },
+        { grade5: 1.333, grade9: 2.14 },
+        { grade5: 1.500, grade9: 2.42 },
+        { grade5: 1.667, grade9: 2.70 },
+        { grade5: 1.833, grade9: 2.95 },
+        { grade5: 2.000, grade9: 3.24 },
+        { grade5: 2.167, grade9: 3.51 },
+        { grade5: 2.333, grade9: 3.76 },
+        { grade5: 2.500, grade9: 4.01 },
+        { grade5: 2.667, grade9: 4.28 },
+        { grade5: 2.833, grade9: 4.52 },
+        { grade5: 3.000, grade9: 4.78 },
+        { grade5: 3.167, grade9: 5.05 },
+        { grade5: 3.333, grade9: 5.29 },
+        { grade5: 3.500, grade9: 5.51 },
+        { grade5: 3.667, grade9: 5.76 },
+        { grade5: 3.833, grade9: 6.04 },
+        { grade5: 4.000, grade9: 6.31 },
+        { grade5: 4.167, grade9: 6.54 },
+        { grade5: 4.333, grade9: 6.77 },
+        { grade5: 4.500, grade9: 7.01 },
+        { grade5: 4.667, grade9: 7.26 },
+        { grade5: 4.833, grade9: 7.51 },
+        { grade5: 5.000, grade9: 8.89 }
+      ];
 
-  let p = 50.0;
-  if (avg5 <= 1.0) p = 2.0;
-  else if (avg5 <= 1.5) p = 2.0 + (avg5 - 1.0) * 12.0;
-  else if (avg5 <= 2.0) p = 8.0 + (avg5 - 1.5) * 18.0;
-  else if (avg5 <= 2.5) p = 17.0 + (avg5 - 2.0) * 24.0;
-  else if (avg5 <= 3.0) p = 29.0 + (avg5 - 2.5) * 20.0;
-  else if (avg5 <= 3.5) p = 39.0 + (avg5 - 3.0) * 22.0;
-  else if (avg5 <= 4.0) p = 50.0 + (avg5 - 3.5) * 24.0;
-  else if (avg5 <= 4.5) p = 62.0 + (avg5 - 4.0) * 26.0;
-  else p = 75.0 + (avg5 - 4.5) * 25.0;
+      // 정확히 경계값에 일치하는 경우
+      const exactMatch = lookupTable.find(item => Math.abs(item.grade5 - avg5) < 0.001);
+      if (exactMatch) return exactMatch.grade9.toFixed(2);
 
-  const prob = p / 100;
-  const z = normSInv(prob);
-  
-  // 정규화 변환식
-  const converted = 5 + (1.75 * z);
-  
-  // 1.00 ~ 9.00 범위 제어
-  const finalGrade = Math.max(1.00, Math.min(9.00, converted));
+      // 구간 선형 보간 (Linear Interpolation)
+      for (let i = 0; i < lookupTable.length - 1; i++) {
+        const min = lookupTable[i];
+        const max = lookupTable[i + 1];
 
-  return finalGrade.toFixed(2);
-}
+        if (avg5 >= min.grade5 && avg5 <= max.grade5) {
+          const ratio = (avg5 - min.grade5) / (max.grade5 - min.grade5);
+          const converted = min.grade9 + ratio * (max.grade9 - min.grade9);
+          return converted.toFixed(2);
+        }
+      }
+
+      return "미산출";
+    }
 
     // AI 수시 추천 함수
     const getSusiRecommendation = (internalGrades) => {
@@ -184,33 +194,36 @@ function convert5To9Grade(avg5Input) {
         ...Object.values(internalGrades.sem1 || {}),
         ...Object.values(internalGrades.sem2 || {})
       ].filter(v => v !== null && v !== '' && !isNaN(v));
-
       if (allVals.length === 0) {
         return { avg5: '미입력', converted9: '미산출', range: '성적 입력 필요', univs: '내신 성적을 입력해 주세요.', tip: '성적을 입력하면 적정 대학을 추천해 드립니다.' };
       }
-
       const avg5 = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
-      const converted9Val = parseFloat(convert5To9Grade(avg5));
+      const converted9Str = convert5To9Grade(avg5);
+      
+      if (converted9Str === "미산출") {
+        return { avg5: avg5.toFixed(2), converted9: '미산출', range: '범위 초과', univs: '성적 입력을 확인해 주세요.', tip: '올바른 등급 범위(1~5등급) 내의 성적을 입력하세요.' };
+      }
 
+      const converted9Val = parseFloat(converted9Str);
       let range = '', univs = '', tip = '';
-      if (converted9Val <= 1.5) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 최상위권)`;
+      if (converted9Val <= 1.8) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (경기진협 환산 약 ${converted9Val.toFixed(2)}등급 - 최상위권)`;
         univs = '서울대, 연세대, 고려대, 카이스트, 포스텍, 의치한약수';
         tip = '학생부 종합전형 세특의 학업 역량 및 깊이 있는 탐구 활동 증명이 핵심입니다.';
-      } else if (converted9Val <= 2.3) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 상위권)`;
-        univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 시립대';
+      } else if (converted9Val <= 2.8) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (경기진협 환산 약 ${converted9Val.toFixed(2)}등급 - 상위권)`;
+        univs = '성균관대, 서강대, 한양대, 중앙대, 경희대, 한국외대, 서울시립대';
         tip = '수능 최저학력기준 충족 여부 점검과 전공 연계성을 확보하세요.';
-      } else if (converted9Val <= 3.5) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중상위권)`;
+      } else if (converted9Val <= 4.0) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (경기진협 환산 약 ${converted9Val.toFixed(2)}등급 - 중상위권)`;
         univs = '건국대, 동국대, 홍익대, 국민대, 숭실대, 세종대, 인하대, 아주대';
         tip = '주요 교과 성적 유지 및 학종 세특의 구체성을 확보하세요.';
-      } else if (converted9Val <= 5.0) {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 중위권)`;
+      } else if (converted9Val <= 5.5) {
+        range = `5등급제 ${avg5.toFixed(2)}등급 (경기진협 환산 약 ${converted9Val.toFixed(2)}등급 - 중위권)`;
         univs = '단국대, 광운대, 명지대, 상명대, 가천대, 인천대, 경기대';
         tip = '교과 세특의 성실성 어필 및 적정 대학 수시 전형을 분석하세요.';
       } else {
-        range = `5등급제 ${avg5.toFixed(2)}등급 (9등급 환산 약 ${converted9Val.toFixed(2)}등급 - 일반권)`;
+        range = `5등급제 ${avg5.toFixed(2)}등급 (경기진협 환산 약 ${converted9Val.toFixed(2)}등급 - 일반권)`;
         univs = '수도권 주요 대학 및 지방 거점 국립대, 약술형 논술전형 고려';
         tip = '취약 과목 보완 및 맞춤형 입시 전략을 수립하세요.';
       }
@@ -224,13 +237,10 @@ function convert5To9Grade(avg5Input) {
         ...Object.values(mockGrades.sep || {}),
         ...Object.values(mockGrades.oct || {})
       ].filter(v => v !== null && v !== '' && !isNaN(v));
-
       if (allVals.length === 0) {
         return { range: '미산출', univs: '전국연합학력평가 성적을 입력해 주세요.', tip: '성적 입력 시 수능 예측 라인이 계산됩니다.' };
       }
-
       const avg = allVals.reduce((a, b) => a + Number(b), 0) / allVals.length;
-
       if (avg <= 1.5) {
         return { range: `평균 ${avg.toFixed(2)}등급 (수능 최상위권)`, univs: '서울대, 연세대, 고려대, 의치한약수 정시 지원권', tip: '고난도 3점 문항 극복 및 실전 모의고사 시간 배분 훈련 집중.' };
       } else if (avg <= 2.5) {
@@ -248,28 +258,23 @@ function convert5To9Grade(avg5Input) {
       const sem1Count = (subjects?.sem1?.social?.length || 0) + (subjects?.sem1?.science?.length || 0);
       const sem2Count = (subjects?.sem2?.math?.length || 0) + (subjects?.sem2?.social?.length || 0) + (subjects?.sem2?.science?.length || 0);
       const detailCount = Object.values(roadmapDetails || {}).filter(v => v && v.trim() !== '').length;
-
       let strengths = [];
       let improvements = [];
-
       if (career && career !== '미정' && career.trim() !== '') {
         strengths.push(`'${career}'라는 명확한 진로 목표가 설정되어 있음.`);
       } else {
         improvements.push('진로 목표가 아직 미정이므로 세부 관심 분야 탐색이 우선 필요함.');
       }
-
       if (sem1Count + sem2Count >= 3) {
         strengths.push(`희망 계열(${field || '계열'}, 학과: ${major || '학과'})과 연계된 2학년 선택과목 이수 계획이 충실함.`);
       } else {
         improvements.push('진로 진학 계열성에 맞는 2학년 탐구/수학 선택 과목 보완 권장.');
       }
-
       if (detailCount >= 3) {
         strengths.push(`진로 로드맵 활동(${detailCount}개 항목)이 구체적으로 작성되어 진정성이 높음.`);
       } else {
         improvements.push('학급자치회, 꿈두레, 수요칼리지, 학술제 등 창의적 체험활동 로드맵 항목 추가 작성 필요.');
       }
-
       return { strengths, improvements };
     };
 
@@ -279,20 +284,16 @@ function convert5To9Grade(avg5Input) {
       const [passwords, setPasswords] = useState(INITIAL_PASSWORDS);
       const [appointments, setAppointments] = useState([]);
       const [loading, setLoading] = useState(true);
-
       const [currentUser, setCurrentUser] = useState(null);
       const [idInput, setIdInput] = useState('');
       const [pwInput, setPwInput] = useState('');
       const [loginError, setLoginError] = useState('');
-
       const [pwModalOpen, setPwModalOpen] = useState(false);
       const [changePwForm, setChangePwForm] = useState({ current: '', newPw: '', confirmPw: '' });
       const [pwChangeError, setPwChangeError] = useState('');
-
       const [selectedStudentId, setSelectedStudentId] = useState(null);
       const [searchQuery, setSearchQuery] = useState('');
       const [filterCategory, setFilterCategory] = useState('전체');
-
       const [activeTab, setActiveTab] = useState('career');
       const [newStudentModal, setNewStudentModal] = useState(false);
       const [newStudentForm, setNewStudentForm] = useState({ id: '', name: '' });
@@ -312,7 +313,6 @@ function convert5To9Grade(avg5Input) {
             });
           }
         });
-
         const unsubscribePw = db.collection('settings').doc('passwords').onSnapshot(doc => {
           if (doc.exists) {
             setPasswords(doc.data());
@@ -320,7 +320,6 @@ function convert5To9Grade(avg5Input) {
             db.collection('settings').doc('passwords').set(INITIAL_PASSWORDS);
           }
         });
-
         const unsubscribeApps = db.collection('appointments').onSnapshot(snapshot => {
           const apps = [];
           snapshot.forEach(doc => {
@@ -329,7 +328,6 @@ function convert5To9Grade(avg5Input) {
           setAppointments(apps);
           setLoading(false);
         });
-
         return () => {
           unsubscribeStudents();
           unsubscribePw();
@@ -341,24 +339,19 @@ function convert5To9Grade(avg5Input) {
         e.preventDefault();
         const code = idInput.trim();
         const inputPw = pwInput.trim();
-
         if (!code || !inputPw) {
           setLoginError('학번과 비밀번호를 모두 입력해 주세요.');
           return;
         }
-
         const savedPw = passwords[code];
-
         if (!savedPw) {
           setLoginError('존재하지 않는 학번(식별코드)입니다.');
           return;
         }
-
         if (savedPw !== inputPw) {
           setLoginError('비밀번호가 일치하지 않습니다. (초기 비밀번호: 0000)');
           return;
         }
-
         if (code === '10200') {
           setCurrentUser({ role: 'teacher', id: '10200' });
         } else {
@@ -378,27 +371,21 @@ function convert5To9Grade(avg5Input) {
       const handleChangePassword = async (e) => {
         e.preventDefault();
         setPwChangeError('');
-
         const { current, newPw, confirmPw } = changePwForm;
-
         if (passwords[currentUser.id] !== current) {
           setPwChangeError('현재 비밀번호가 일치하지 않습니다.');
           return;
         }
-
         if (!/^\d{4}$/.test(newPw)) {
           setPwChangeError('새 비밀번호는 숫자 4자리여야 합니다.');
           return;
         }
-
         if (newPw !== confirmPw) {
           setPwChangeError('새 비밀번호와 비밀번호 확인이 일치하지 않습니다.');
           return;
         }
-
         const updatedPw = { ...passwords, [currentUser.id]: newPw };
         await db.collection('settings').doc('passwords').set(updatedPw);
-
         alert('비밀번호가 성공적으로 변경되었습니다!');
         setPwModalOpen(false);
         setChangePwForm({ current: '', newPw: '', confirmPw: '' });
@@ -411,7 +398,6 @@ function convert5To9Grade(avg5Input) {
           alert('이미 존재하는 학번입니다.');
           return;
         }
-
         const newStudent = {
           id: newStudentForm.id,
           name: newStudentForm.name,
@@ -432,12 +418,10 @@ function convert5To9Grade(avg5Input) {
           },
           logs: []
         };
-
         await db.collection('students').doc(newStudentForm.id).set(newStudent);
         await db.collection('settings').doc('passwords').update({
           [newStudentForm.id]: '0000'
         });
-
         setNewStudentForm({ id: '', name: '' });
         setNewStudentModal(false);
       };
@@ -472,7 +456,6 @@ function convert5To9Grade(avg5Input) {
                   🌱 학번 & 비밀번호로 통합 로그인
                 </p>
               </div>
-
               <form onSubmit={handleLogin} className="space-y-4 relative z-10">
                 <div>
                   <label className="block text-xs font-extrabold text-[#5c6d54] mb-1.5 ml-1">학번 (식별 코드)</label>
@@ -485,7 +468,6 @@ function convert5To9Grade(avg5Input) {
                     onChange={(e) => setIdInput(e.target.value)}
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-extrabold text-[#5c6d54] mb-1.5 ml-1">비밀번호 (초기: 0000)</label>
                   <input
@@ -498,9 +480,7 @@ function convert5To9Grade(avg5Input) {
                     onChange={(e) => setPwInput(e.target.value)}
                   />
                 </div>
-
                 {loginError && <p className="text-[#d96b63] text-xs text-center font-bold">{loginError}</p>}
-
                 <button
                   type="submit"
                   className="w-full py-3.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white font-extrabold text-base rounded-2xl transition shadow-md hover:shadow-lg transform active:scale-98 flex items-center justify-center gap-2"
@@ -509,7 +489,6 @@ function convert5To9Grade(avg5Input) {
                   <span>시스템 로그인</span>
                 </button>
               </form>
-
               <div className="mt-6 pt-4 border-t-2 border-dashed border-[#e3eed4] text-center text-[11px] font-bold text-[#8c9e83] space-y-1">
                 <p>🍃 교사 학번: <span className="text-[#5c7a43]">10200</span> | 학생 학번: <span className="text-[#5c7a43]">10201~10224</span></p>
                 <p>🔑 초기 비밀번호: <span className="text-[#d96b63]">0000</span> (로그인 후 변경 가능)</p>
@@ -538,7 +517,6 @@ function convert5To9Grade(avg5Input) {
                   </p>
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -598,7 +576,6 @@ function convert5To9Grade(avg5Input) {
                   <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2 border-b pb-3 border-[#e8edd8]">
                     <Icon name="calendar" size={18} className="text-[#7ba05b]" /> 예정된 상담 일정 및 대기 신청 내역
                   </h3>
-
                   {appointments.length === 0 ? (
                     <p className="text-xs font-bold text-[#8c9e83] text-center py-4">신청되거나 예정된 상담 일정이 없습니다.</p>
                   ) : (
@@ -620,12 +597,10 @@ function convert5To9Grade(avg5Input) {
                               {app.status === '신청' ? '승인 대기' : '상담 예정'}
                             </span>
                           </div>
-
                           <div className="text-xs font-bold text-[#5c6d54] bg-[#fffdf7] p-2.5 rounded-xl border border-[#e8edd8]">
                             <p className="text-[#7ba05b] font-extrabold text-[11px] mb-0.5">[{app.category}]</p>
                             <p>{app.reason}</p>
                           </div>
-
                           <div className="flex gap-2 justify-end pt-1">
                             {app.status === '신청' && (
                               <button
@@ -678,7 +653,6 @@ function convert5To9Grade(avg5Input) {
                       <option value="기타 개인적인 고민">기타 개인적인 고민</option>
                     </select>
                   </div>
-
                   <button
                     onClick={() => setNewStudentModal(true)}
                     className="flex items-center justify-center gap-1.5 bg-[#7ba05b] hover:bg-[#688a4a] text-white px-4 py-2.5 rounded-2xl text-xs font-extrabold transition shadow-sm"
@@ -779,9 +753,7 @@ function convert5To9Grade(avg5Input) {
                       onChange={(e) => setChangePwForm({ ...changePwForm, confirmPw: e.target.value })}
                     />
                   </div>
-
                   {pwChangeError && <p className="text-[#d96b63] text-xs font-bold text-center">{pwChangeError}</p>}
-
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
@@ -821,7 +793,6 @@ function convert5To9Grade(avg5Input) {
                     <Icon name="x" size={22} />
                   </button>
                 </div>
-
                 <div className="border-b-2 border-[#e8edd8] bg-[#fffdf7] px-4">
                   <div className="grid grid-cols-3 gap-2 py-2">
                     <button
@@ -853,7 +824,6 @@ function convert5To9Grade(avg5Input) {
                     </button>
                   </div>
                 </div>
-
                 <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#fbfcf7]">
                   <StudentDetailView
                     student={selectedStudent}
@@ -920,7 +890,6 @@ function convert5To9Grade(avg5Input) {
     function StudentDetailView({ student, isTeacher, activeTab: propActiveTab, appointments }) {
       const [localActiveTab, setLocalActiveTab] = useState('career');
       const currentTab = isTeacher ? propActiveTab : localActiveTab;
-
       const [careerForm, setCareerForm] = useState(student?.targetCareer || '미정');
       const [majorForm, setMajorForm] = useState(student?.targetMajor || '미정');
       const [fieldForm, setFieldForm] = useState(student?.targetField || '인문사회');
@@ -928,26 +897,21 @@ function convert5To9Grade(avg5Input) {
         sem1: { social: [], science: [] },
         sem2: { math: [], social: [], science: [] }
       });
-
       const [roadmapDetailsForm, setRoadmapDetailsForm] = useState(student?.roadmapDetails || {});
-
       const [internalGradesForm, setInternalGradesForm] = useState(student?.internalGrades || {
         sem1: { korean: null, math: null, english: null, history: null, social: null, science: null },
         sem2: { korean: null, math: null, english: null, history: null, social: null, science: null }
       });
-
       const [mockGradesForm, setMockGradesForm] = useState(student?.mockGrades || {
         mar: { korean: null, math: null, english: null, history: null, social: null, science: null },
         jun: { korean: null, math: null, english: null, history: null, social: null, science: null },
         sep: { korean: null, math: null, english: null, history: null, social: null, science: null },
         oct: { korean: null, math: null, english: null, history: null, social: null, science: null }
       });
-
       const internalChartRef = useRef(null);
       const mockChartRef = useRef(null);
       const internalChartInstance = useRef(null);
       const mockChartInstance = useRef(null);
-
       const [newLog, setNewLog] = useState({
         date: new Date().toISOString().split('T')[0],
         category: '성적 향상 및 학습 전략',
@@ -955,7 +919,6 @@ function convert5To9Grade(avg5Input) {
         plan: '',
         privateNote: ''
       });
-
       const [bookingForm, setBookingForm] = useState({
         date: '',
         category: '성적 향상 및 학습 전략',
@@ -1001,7 +964,6 @@ function convert5To9Grade(avg5Input) {
             
             const sem2Vals = Object.values(internalGradesForm.sem2 || {}).filter(v => v !== null && v !== '' && !isNaN(v));
             const sem2Avg = sem2Vals.length > 0 ? (sem2Vals.reduce((a,b)=>a+Number(b),0)/sem2Vals.length).toFixed(2) : null;
-
             internalChartInstance.current = new Chart(ctx, {
               type: 'line',
               data: {
@@ -1033,21 +995,17 @@ function convert5To9Grade(avg5Input) {
               }
             });
           }
-
           if (mockChartRef.current) {
             if (mockChartInstance.current) mockChartInstance.current.destroy();
             const ctx = mockChartRef.current.getContext('2d');
-
             const getAvg = (obj) => {
               const vals = Object.values(obj || {}).filter(v => v !== null && v !== '' && !isNaN(v));
               return vals.length > 0 ? (vals.reduce((a,b)=>a+Number(b),0)/vals.length).toFixed(2) : null;
             };
-
             const marAvg = getAvg(mockGradesForm.mar);
             const junAvg = getAvg(mockGradesForm.jun);
             const sepAvg = getAvg(mockGradesForm.sep);
             const octAvg = getAvg(mockGradesForm.oct);
-
             mockChartInstance.current = new Chart(ctx, {
               type: 'line',
               data: {
@@ -1121,7 +1079,6 @@ function convert5To9Grade(avg5Input) {
         if (!newLog.content) return;
         const updatedLogs = [...(student.logs || []), { id: Date.now(), ...newLog }];
         await db.collection('students').doc(student.id).update({ logs: updatedLogs });
-
         setNewLog({
           date: new Date().toISOString().split('T')[0],
           category: '성적 향상 및 학습 전략',
@@ -1153,18 +1110,15 @@ function convert5To9Grade(avg5Input) {
           alert('날짜와 상담 사유를 입력해 주세요.');
           return;
         }
-
         const day = new Date(bookingForm.date).getDay();
         if (day === 0 || day === 6) {
           alert('평일에만 상담 신청이 가능합니다.');
           return;
         }
-
         if (bookingSlotsCount >= 2) {
           alert('해당 일자는 하루 정원(2명)이 마감되었습니다.');
           return;
         }
-
         const newApp = {
           studentId: student.id,
           name: student.name,
@@ -1173,7 +1127,6 @@ function convert5To9Grade(avg5Input) {
           reason: bookingForm.reason,
           status: '신청'
         };
-
         await db.collection('appointments').add(newApp);
         alert('상담 신청이 완료되었습니다.');
         setBookingForm({ date: '', category: '성적 향상 및 학습 전략', reason: '' });
@@ -1271,7 +1224,6 @@ function convert5To9Grade(avg5Input) {
                   </h3>
                   <span className="text-[11px] font-bold text-[#7ba05b] bg-[#f0f5e8] px-2.5 py-1 rounded-full">개별 중복 체크</span>
                 </div>
-
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] space-y-3">
                   <span className="text-xs font-extrabold text-[#5c7a43] flex items-center gap-1">
                     🍃 [1학기 선택 과목]
@@ -1444,7 +1396,6 @@ function convert5To9Grade(avg5Input) {
                       )}
                     </ul>
                   </div>
-
                   <div className="bg-[#fffdf7] p-3.5 rounded-2xl border border-[#d2e8bf] space-y-1.5">
                     <span className="font-extrabold text-[#995c26] flex items-center gap-1">
                       💡 [보완 및 추천 방향]
@@ -1483,7 +1434,6 @@ function convert5To9Grade(avg5Input) {
                     모든 학기 성적 입력 가능
                   </span>
                 </div>
-
                 <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 text-center text-xs">
                   {['국어', '수학', '영어', '한국사', '사회', '과학'].map((subj, idx) => {
                     const keys = ['korean', 'math', 'english', 'history', 'social', 'science'];
@@ -1498,7 +1448,7 @@ function convert5To9Grade(avg5Input) {
                             <span className="text-[10px] font-bold text-[#8c9e83]">1학기</span>
                             {isTeacher ? (
                               <input
-                                type="number" min="1" max="5"
+                                type="number" min="1" max="5" step="0.1"
                                 placeholder="등급"
                                 className="w-10 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
                                 value={g1 !== null && g1 !== undefined ? g1 : ''}
@@ -1513,7 +1463,7 @@ function convert5To9Grade(avg5Input) {
                             <span className="text-[10px] font-bold text-[#8c9e83]">2학기</span>
                             {isTeacher ? (
                               <input
-                                type="number" min="1" max="5"
+                                type="number" min="1" max="5" step="0.1"
                                 placeholder="등급"
                                 className="w-10 text-center bg-[#f6f8f0] border border-[#dde5d0] rounded-lg font-bold"
                                 value={g2 !== null && g2 !== undefined ? g2 : ''}
@@ -1529,11 +1479,12 @@ function convert5To9Grade(avg5Input) {
                     );
                   })}
                 </div>
-
+                
+                {/* AI 수시 추천 결과 패널 (경기진협 9등급 환산 기반) */}
                 <div className="bg-[#f2f7ec] p-4 rounded-2xl border-2 border-[#d0e3be] space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <h4 className="text-xs font-extrabold text-[#436e29] flex items-center gap-1.5">
-                      <Icon name="award" size={16} className="text-[#5b8c3b]" /> 정밀 정규분포(z-score) 9등급 환산 AI 수시 적정 대학 추천
+                      <Icon name="award" size={16} className="text-[#5b8c3b]" /> 경기진협 분석자료 기반 9등급 환산 AI 수시 적정 대학 추천
                     </h4>
                     <span className="text-[11px] font-extrabold text-[#3a5e23] bg-[#e1ebd2] px-2 py-0.5 rounded-full">
                       {susiAiResult.range}
@@ -1562,7 +1513,6 @@ function convert5To9Grade(avg5Input) {
                     3월 · 6월 · 9월 · 10월 전체 입력 활성화
                   </span>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                   {[
                     { title: '3월 학력평가', key: 'mar' },
@@ -1608,7 +1558,6 @@ function convert5To9Grade(avg5Input) {
                     </div>
                   ))}
                 </div>
-
                 <div className="bg-[#ebf4f5] p-4 rounded-2xl border-2 border-[#bcdbdf] space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-1">
                     <h4 className="text-xs font-extrabold text-[#2b5961] flex items-center gap-1.5">
@@ -1619,7 +1568,6 @@ function convert5To9Grade(avg5Input) {
                   <p className="text-xs font-extrabold text-[#1d4147]">🎯 정시 지원 타깃 라인: <span className="text-[#2c626b]">{jeongsiAiResult.univs}</span></p>
                   <p className="text-[11px] font-bold text-[#457279]">💡 수능 대비 전략: {jeongsiAiResult.tip}</p>
                 </div>
-
                 <div className="bg-[#f8faf2] p-4 rounded-2xl border-2 border-[#e3eed4] h-64 relative">
                   <h4 className="text-xs font-extrabold text-[#3a6351] mb-2 flex items-center gap-1">
                     📈 학력평가 평균 등급 변화 추이 그래프
@@ -1712,7 +1660,6 @@ function convert5To9Grade(avg5Input) {
                       상담 기록 등록
                     </button>
                   </form>
-
                   <div className="space-y-3">
                     <h3 className="font-extrabold text-[#4a5843] text-sm">상담 히스토리 ({student.logs?.length || 0}건)</h3>
                     <div className="relative pl-5 border-l-4 border-dashed border-[#c2d6b2] space-y-4">
@@ -1779,12 +1726,10 @@ function convert5To9Grade(avg5Input) {
                       </div>
                     )}
                   </div>
-
                   <form onSubmit={handleBookingSubmit} className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] shadow-sm space-y-4">
                     <h3 className="font-extrabold text-[#4a5843] text-sm flex items-center gap-2">
                       <Icon name="calendar" size={16} className="text-[#7ba05b]" /> 담임선생님 1:1 상담 신청
                     </h3>
-
                     <div>
                       <label className="block text-xs font-bold text-[#8c9e83] mb-1">희망 상담 일자 (평일만 가능)</label>
                       <input
@@ -1794,7 +1739,6 @@ function convert5To9Grade(avg5Input) {
                         value={bookingForm.date}
                         onChange={(e) => setBookingForm({ ...bookingForm, date: e.target.value })}
                       />
-
                       {bookingForm.date && (
                         <div className="mt-2.5 p-3 rounded-2xl border-2 flex justify-between items-center transition bg-[#f8faf2] border-[#e3eed4]">
                           <div className="text-xs font-extrabold text-[#4a5843]">
@@ -1812,7 +1756,6 @@ function convert5To9Grade(avg5Input) {
                         </div>
                       )}
                     </div>
-
                     <div>
                       <label className="block text-xs font-bold text-[#8c9e83] mb-1">상담 분야</label>
                       <select
@@ -1825,7 +1768,6 @@ function convert5To9Grade(avg5Input) {
                         <option value="기타 개인적인 고민">기타 개인적인 고민</option>
                       </select>
                     </div>
-
                     <div>
                       <label className="block text-xs font-bold text-[#8c9e83] mb-1">상담 사유</label>
                       <textarea
@@ -1837,7 +1779,6 @@ function convert5To9Grade(avg5Input) {
                         onChange={(e) => setBookingForm({ ...bookingForm, reason: e.target.value })}
                       ></textarea>
                     </div>
-
                     <button
                       type="submit"
                       disabled={bookingSlotsCount >= 2}
@@ -1848,7 +1789,6 @@ function convert5To9Grade(avg5Input) {
                       {bookingSlotsCount >= 2 ? '해당 일자 상담이 마감되었습니다' : '상담 신청 제출하기'}
                     </button>
                   </form>
-
                   <div className="bg-[#fffdf7] p-5 rounded-3xl border-2 border-[#e3eed4] space-y-3">
                     <h4 className="font-extrabold text-[#4a5843] text-xs">나의 상담 신청 현황</h4>
                     <div className="space-y-2">
